@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+*.pyc
+screenshot.png
+build-report.txt
+.DS_Store
