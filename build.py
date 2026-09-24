@@ -502,6 +502,141 @@ def esc_attr(s: str) -> str:
     return html.escape(s, quote=True)
 
 
+def truncate_text(s: str, max_len: int) -> str:
+    """Truncate at a word boundary; append ellipsis when shortened."""
+    s = (s or "").strip()
+    if len(s) <= max_len:
+        return s
+    cut = s[: max_len - 1].rsplit(" ", 1)[0].rstrip(" ,;:-")
+    if not cut or len(cut) < max_len // 3:
+        cut = s[: max_len - 1].rstrip()
+    return cut + "…"
+
+
+def site_canonical_url() -> str:
+    """Homepage canonical — always https."""
+    return getattr(config, "SITE_URL", "https://headlinereport.net/").rstrip("/") + "/"
+
+
+def build_page_title(lead_title: str) -> str:
+    """Unique <title>: site name + truncated lead headline."""
+    lead = truncate_text(lead_title or "", 70)
+    if lead:
+        return f"{config.SITE_NAME} — {lead}"
+    return config.SITE_NAME
+
+
+def build_meta_description(lead: "Cluster", teasers: list["Cluster"]) -> str:
+    """Meta description from lead + top teaser headlines (real data only)."""
+    bits: list[str] = []
+    if lead and lead.best.title:
+        bits.append(lead.best.title.strip())
+    for c in teasers[:3]:
+        t = (c.best.title or "").strip()
+        if t and t not in bits:
+            bits.append(t)
+    if not bits:
+        return f"{config.SITE_NAME}: aggregated headlines from major outlets."
+    return truncate_text(" · ".join(bits), 155)
+
+
+def iso8601(dt: Optional[datetime]) -> Optional[str]:
+    if not dt:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def build_json_ld(
+    lead: "Cluster",
+    teasers: list["Cluster"],
+    columns: list[list["Cluster"]],
+    updated: datetime,
+    og_image: Optional[str],
+) -> str:
+    """WebSite + ItemList JSON-LD from real build data only."""
+    import json
+
+    canon = site_canonical_url()
+    website: dict = {
+        "@type": "WebSite",
+        "name": config.SITE_NAME,
+        "url": canon,
+        "description": f"{config.SITE_NAME} — {config.SITE_TAGLINE.lower()}. Links open original articles.",
+        "inLanguage": "en",
+    }
+    if og_image:
+        website["image"] = og_image
+
+    seen: set[str] = set()
+    list_items: list[dict] = []
+    ordered: list = [lead] + list(teasers)
+    for col in columns:
+        ordered.extend(col[:6])
+    for c in ordered:
+        item = c.best
+        if not item.link or item.link in seen:
+            continue
+        seen.add(item.link)
+        entry: dict = {
+            "@type": "ListItem",
+            "position": len(list_items) + 1,
+            "url": item.link,
+            "name": item.title,
+        }
+        article: dict = {
+            "@type": "NewsArticle",
+            "headline": item.title,
+            "url": item.link,
+            "isPartOf": {"@type": "WebSite", "name": config.SITE_NAME, "url": canon},
+        }
+        if item.source:
+            article["author"] = {"@type": "Organization", "name": item.source}
+            article["publisher"] = {"@type": "Organization", "name": item.source}
+        dp = iso8601(item.published) or iso8601(c.latest)
+        if dp:
+            article["datePublished"] = dp
+        if c.image:
+            article["image"] = c.image
+        entry["item"] = article
+        list_items.append(entry)
+        if len(list_items) >= 20:
+            break
+
+    item_list = {
+        "@type": "ItemList",
+        "name": f"{config.SITE_NAME} top stories",
+        "numberOfItems": len(list_items),
+        "itemListElement": list_items,
+        "dateModified": iso8601(updated),
+    }
+    payload = {"@context": "https://schema.org", "@graph": [website, item_list]}
+    return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+
+
+def write_robots_txt(public_dir: Path) -> None:
+    canon = site_canonical_url()
+    text = "User-agent: *\nAllow: /\n\nSitemap: " + canon + "sitemap.xml\n"
+    (public_dir / "robots.txt").write_text(text, encoding="utf-8")
+
+
+def write_sitemap(public_dir: Path, updated: datetime) -> None:
+    canon = site_canonical_url()
+    lastmod = updated.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+    xml = (
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+        "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n"
+        "  <url>\n"
+        f"    <loc>{html.escape(canon)}</loc>\n"
+        f"    <lastmod>{lastmod}</lastmod>\n"
+        "    <changefreq>hourly</changefreq>\n"
+        "    <priority>1.0</priority>\n"
+        "  </url>\n"
+        "</urlset>\n"
+    )
+    (public_dir / "sitemap.xml").write_text(xml, encoding="utf-8")
+
 
 def normalize_image_key(url: str) -> str:
     """Collapse query/size variants so near-duplicate CDN URLs dedupe."""
@@ -646,7 +781,7 @@ def render_story_image(item: "Item", url: str, *, css_class: str = "story-img") 
     return (
         f'<div class="{css_class}">'
         f'<a href="{esc_attr(item.link)}" target="_blank" rel="noopener noreferrer">'
-        f'<img src="{esc_attr(url)}" alt="" referrerpolicy="no-referrer" loading="lazy">'
+        f'<img src="{esc_attr(url)}" alt="{esc_attr(truncate_text(item.title or "", 120))}" referrerpolicy="no-referrer" loading="lazy">'
         f"</a>"
         f'<div class="img-cap">{format_headline_link(item)}</div>'
         f"</div>"
@@ -709,6 +844,18 @@ def render_html(
 
     lead_img, top_images, col_images = pick_page_images(lead, teasers, columns)
 
+    page_title = build_page_title(lead_item.title)
+    meta_desc = build_meta_description(lead, teasers)
+    canon = site_canonical_url()
+    twitter_card = "summary_large_image" if lead_img else "summary"
+    if lead_img:
+        og_image_tags = f'<meta property="og:image" content="{esc_attr(lead_img)}">\n'
+        twitter_image_tag = f'<meta name="twitter:image" content="{esc_attr(lead_img)}">\n'
+    else:
+        og_image_tags = ""
+        twitter_image_tag = ""
+    json_ld = build_json_ld(lead, teasers, columns, updated, lead_img)
+
     parts: list[str] = []
     parts.append(f"""<!DOCTYPE html>
 <html lang="en">
@@ -716,7 +863,20 @@ def render_html(
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache">
-<title>{esc_text(config.SITE_NAME)}</title>
+<title>{esc_text(page_title)}</title>
+<meta name="description" content="{esc_attr(meta_desc)}">
+<meta name="robots" content="index,follow">
+<meta name="theme-color" content="#ffffff">
+<link rel="canonical" href="{esc_attr(canon)}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="{esc_attr(config.SITE_NAME)}">
+<meta property="og:title" content="{esc_attr(page_title)}">
+<meta property="og:description" content="{esc_attr(meta_desc)}">
+<meta property="og:url" content="{esc_attr(canon)}">
+{og_image_tags}<meta name="twitter:card" content="{esc_attr(twitter_card)}">
+<meta name="twitter:title" content="{esc_attr(page_title)}">
+<meta name="twitter:description" content="{esc_attr(meta_desc)}">
+{twitter_image_tag}<script type="application/ld+json">{json_ld}</script>
 <style>
   html, body {{
     margin: 0;
@@ -899,10 +1059,13 @@ def render_html(
 </head>
 <body>
 <div class="wrap">
+  <header>
   <div class="topbar">{esc_text(config.SITE_TAGLINE)}</div>
-  <div class="sitename">{esc_text(config.SITE_NAME)}</div>
+  <div class="sitename"><h1 style="margin:0;font-size:inherit;font-weight:inherit;letter-spacing:inherit">{esc_text(config.SITE_NAME)}</h1></div>
   <div class="updated">updated {esc_text(updated_display)}</div>
+  </header>
 
+  <main>
   <div class="teasers">
 """)
 
@@ -924,10 +1087,13 @@ def render_html(
         parts.append("  </div>\n")
 
     # Lead
-    parts.append('  <div class="lead-block">\n')
+    parts.append('  <article class="lead-block">\n')
     if keyword_boost(lead_item.title) >= 2 or len(lead.sources) >= 3:
         parts.append('    <div class="siren">***&nbsp;&nbsp;***</div>\n')
-    parts.append(f'    <div class="lead-headline">{format_headline_link(lead_item, red=True, all_caps=True)}</div>\n')
+    parts.append(
+        f'    <h2 class="lead-headline" style="margin:6px 0 10px;font-size:inherit;font-weight:inherit">'
+        f'{format_headline_link(lead_item, red=True, all_caps=True)}</h2>\n'
+    )
 
     flank = top_images[2:]  # remaining top images flank the lead photo
     if lead_img or flank:
@@ -940,7 +1106,7 @@ def render_html(
         if lead_img:
             parts.append(
                 f'      <div class="lead-img"><a href="{esc_attr(lead_item.link)}" target="_blank" rel="noopener noreferrer">'
-                f'<img src="{esc_attr(lead_img)}" alt="" referrerpolicy="no-referrer" loading="lazy"></a></div>\n'
+                f'<img src="{esc_attr(lead_img)}" alt="{esc_attr(truncate_text(lead_item.title, 120))}" referrerpolicy="no-referrer" loading="lazy"></a></div>\n'
             )
         if len(flank) >= 2:
             c, url = flank[1]
@@ -951,10 +1117,10 @@ def render_html(
     if len(lead.sources) > 1:
         srcs = ", ".join(sorted(_short_source(s) for s in lead.sources))
         parts.append(f'    <div class="sources-note">also: {esc_text(srcs)}</div>\n')
-    parts.append("  </div>\n")
+    parts.append("  </article>\n")
 
     parts.append('  <hr class="main">\n')
-    parts.append('  <div class="cols">\n')
+    parts.append('  <div class="cols" role="region" aria-label="Headlines">\n')
 
     for ci, col in enumerate(columns):
         parts.append('    <div class="col">\n')
@@ -978,10 +1144,11 @@ def render_html(
                     parts.append("      " + render_story_image(ic.best, url) + "\n")
         parts.append("    </div>\n")
 
-    parts.append("  </div>\n")
+    parts.append("  </div>\n")  # .cols
+    parts.append("  </main>\n")
 
     parts.append('  <hr class="main">\n')
-    parts.append('  <div class="footer">\n')
+    parts.append('  <footer class="footer">\n')
     parts.append(f"    <div><b>{esc_text(config.SITE_NAME)}</b> — links open original articles</div>\n")
     parts.append("    <div>\n")
     for i, src in enumerate(ok_sources):
@@ -994,7 +1161,7 @@ def render_html(
         if i < len(ok_sources) - 1:
             parts.append(" &nbsp;\n")
     parts.append("\n    </div>\n")
-    parts.append("  </div>\n")
+    parts.append("  </footer>\n")
     parts.append("</div>\n</body>\n</html>\n")
     return "".join(parts)
 
@@ -1180,6 +1347,9 @@ def main() -> int:
     out_path = ROOT / config.OUTPUT_PATH
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(html_out, encoding="utf-8")
+    write_robots_txt(out_path.parent)
+    write_sitemap(out_path.parent, now)
+    print(f"Wrote {out_path.parent / 'robots.txt'} and {out_path.parent / 'sitemap.xml'}", flush=True)
 
     n_on_page = 1 + len(teasers) + sum(len(c) for c in columns)
     img_srcs = sorted(set(re.findall(r'<img\b[^>]+src="([^"]+)"', html_out, flags=re.I)))

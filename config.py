@@ -2,6 +2,7 @@
 
 SITE_NAME = "HEADLINE REPORT"
 SITE_TAGLINE = "AGGREGATED HEADLINES"
+SITE_URL = "https://headlinereport.net/"
 OUTPUT_PATH = "public/index.html"
 
 # User-Agent for polite feed fetching

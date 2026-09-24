@@ -17,6 +17,8 @@ fi
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 cp public/index.html "$STAGE/index.html"
+cp public/robots.txt "$STAGE/robots.txt"
+cp public/sitemap.xml "$STAGE/sitemap.xml"
 printf 'headlinereport.net\n' > "$STAGE/CNAME"
 touch "$STAGE/.nojekyll"
 
@@ -24,7 +26,7 @@ touch "$STAGE/.nojekyll"
 git -C "$STAGE" init -b gh-pages
 git -C "$STAGE" config user.email "ws6ws6@users.noreply.github.com"
 git -C "$STAGE" config user.name "Ws6Ws6"
-git -C "$STAGE" add index.html CNAME .nojekyll
+git -C "$STAGE" add index.html robots.txt sitemap.xml CNAME .nojekyll
 git -C "$STAGE" commit -m "Publish HEADLINE REPORT $(date -R)"
 git -C "$STAGE" remote add origin "$REPO_URL"
 git -C "$STAGE" push -f origin gh-pages
