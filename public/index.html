@@ -52,6 +52,24 @@
   .teasers div {
     margin: 3px 0;
   }
+  .top-photos {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 14px 22px;
+    margin: 6px auto 12px;
+    max-width: 900px;
+    text-align: center;
+  }
+  .top-photos .story-img {
+    max-width: 220px;
+  }
+  .top-photos .story-img img {
+    max-width: 220px;
+    width: 100%;
+    height: auto;
+    border: 1px solid #000;
+  }
   .lead-block {
     text-align: center;
     margin: 10px auto 18px;
@@ -82,6 +100,23 @@
     height: auto;
     border: 1px solid #000;
   }
+  .lead-flank {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 16px 20px;
+    margin: 8px auto 4px;
+  }
+  .lead-flank .flank-img {
+    max-width: 200px;
+  }
+  .lead-flank .flank-img img {
+    max-width: 200px;
+    width: 100%;
+    height: auto;
+    border: 1px solid #000;
+  }
   .sources-note {
     font-size: 11px;
     color: #444;
@@ -107,6 +142,26 @@
     margin: 0 0 9px;
     word-wrap: break-word;
   }
+  .col .story-img {
+    margin: 10px auto 14px;
+    text-align: center;
+    max-width: 280px;
+  }
+  .col .story-img img {
+    max-width: 260px;
+    width: 100%;
+    height: auto;
+    border: 1px solid #000;
+  }
+  .img-cap {
+    margin-top: 4px;
+    font-size: 13px;
+    line-height: 1.3;
+    text-align: center;
+  }
+  .img-cap a {
+    text-decoration: underline;
+  }
   .col hr {
     border: 0;
     border-top: 1px solid #999;
@@ -122,6 +177,11 @@
   @media (max-width: 800px) {
     .cols { flex-direction: column; }
     .lead-headline a { font-size: 22px; }
+    .lead-flank { flex-direction: column; align-items: center; }
+    .top-photos { flex-direction: column; align-items: center; }
+    .col .story-img, .col .story-img img {
+      max-width: 100%;
+    }
   }
 </style>
 </head>
@@ -129,96 +189,100 @@
 <div class="wrap">
   <div class="topbar">AGGREGATED HEADLINES</div>
   <div class="sitename">HEADLINE REPORT</div>
-  <div class="updated">updated Wed Sep 23 2026 10:31:36 PM ET</div>
+  <div class="updated">updated Wed Sep 23 2026 11:54:14 PM ET</div>
 
   <div class="teasers">
-    <div><a href="https://www.nytimes.com/2026/09/23/us/politics/trump-putin-g20-summit.html" target="_blank" rel="noopener noreferrer" style="color:#c00">Trump Invites Putin to Attend Group of 20 Summit in Miami</a></div>
-    <div><a href="https://www.bbc.co.uk/news/articles/c6vgy0333dppo?at_medium=RSS&amp;at_campaign=rss" target="_blank" rel="noopener noreferrer" style="color:#c00">OpenAI agent 'infiltrated' Australian government website, PM says</a></div>
-    <div><a href="https://www.nytimes.com/2026/09/23/us/politics/uss-lincoln-attempted-suicides.html" target="_blank" rel="noopener noreferrer" style="color:#c00">8 Sailors in U.S.S. Lincoln Strike Group Attempted Suicide, Navy Says</a></div>
-    <div><a href="https://www.cnbc.com/2026/09/24/us-china-trade-truce-bessent-trump-xi.html" target="_blank" rel="noopener noreferrer" style="color:#c00">U.S.-China trade truce extended for two months, Bessent says, as Xi begins state visit</a></div>
+  </div>
+  <div class="top-photos">
+    <div class="story-img"><a href="https://www.cnbc.com/2026/09/24/us-china-trade-truce-bessent-trump-xi.html" target="_blank" rel="noopener noreferrer"><img src="https://static01.nyt.com/images/2026/09/23/multimedia/23trump-xi-trade-truce-vckz/23trump-xi-trade-truce-vckz-mediumSquareAt3X.jpg" alt="" referrerpolicy="no-referrer" loading="lazy"></a><div class="img-cap"><a href="https://www.cnbc.com/2026/09/24/us-china-trade-truce-bessent-trump-xi.html" target="_blank" rel="noopener noreferrer">U.S.-China trade truce extended for two months, Bessent says, as Xi begins state visit</a></div></div>
+    <div class="story-img"><a href="https://www.nytimes.com/2026/09/23/us/politics/trump-putin-g20-summit.html" target="_blank" rel="noopener noreferrer"><img src="https://static01.nyt.com/images/2026/09/23/multimedia/23dc-g20-russia-mqvz/23dc-g20-russia-mqvz-mediumSquareAt3X.jpg" alt="" referrerpolicy="no-referrer" loading="lazy"></a><div class="img-cap"><a href="https://www.nytimes.com/2026/09/23/us/politics/trump-putin-g20-summit.html" target="_blank" rel="noopener noreferrer">Trump Invites Putin to Attend Group of 20 Summit in Miami</a></div></div>
   </div>
   <div class="lead-block">
     <div class="siren">***&nbsp;&nbsp;***</div>
     <div class="lead-headline"><a href="https://www.cbsnews.com/news/harvey-weinstein-sentencing-sexual-assault-nyc/" target="_blank" rel="noopener noreferrer" style="color:#c00">HARVEY WEINSTEIN SENTENCED TO 15 YEARS IN NEW YORK SEXUAL ASSAULT CASE</a></div>
-    <div class="lead-img"><a href="https://www.cbsnews.com/news/harvey-weinstein-sentencing-sexual-assault-nyc/" target="_blank" rel="noopener noreferrer"><img src="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/27d6/live/b340ed80-b766-11f1-a7b2-f3bdba1cd194.jpg" alt="" referrerpolicy="no-referrer"></a></div>
-    <div class="sources-note">also: Al Jazeera, BBC, CBS News, Reuters, UPI</div>
+    <div class="lead-flank">
+      <div class="flank-img"><a href="https://nypost.com/2026/09/23/business/openai-agent-hacked-into-australian-government-website-says-pm-anthony-albanese/" target="_blank" rel="noopener noreferrer"><img src="https://nypost.com/wp-content%2Fuploads%2Fsites%2F2%2F2026%2F09%2Faustralian-prime-minister-anthony-albanese-142253444.jpg?w%3D1024" alt="" referrerpolicy="no-referrer" loading="lazy"></a><div class="img-cap"><a href="https://nypost.com/2026/09/23/business/openai-agent-hacked-into-australian-government-website-says-pm-anthony-albanese/" target="_blank" rel="noopener noreferrer">OpenAI agent hacked into Australian government website, says PM Anthony Albanese</a></div></div>
+      <div class="lead-img"><a href="https://www.cbsnews.com/news/harvey-weinstein-sentencing-sexual-assault-nyc/" target="_blank" rel="noopener noreferrer"><img src="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/27d6/live/b340ed80-b766-11f1-a7b2-f3bdba1cd194.jpg" alt="" referrerpolicy="no-referrer" loading="lazy"></a></div>
+      <div class="flank-img"><a href="https://thehill.com/regulation/court-battles/6107914-trump-selzer-polling-lawsuit-dismissed/" target="_blank" rel="noopener noreferrer"><img src="https://thehill.com/wp-content/uploads/sites/2/2026/09/AP26265149590727-e1790080377319.jpg?w=900" alt="" referrerpolicy="no-referrer" loading="lazy"></a><div class="img-cap"><a href="https://thehill.com/regulation/court-battles/6107914-trump-selzer-polling-lawsuit-dismissed/" target="_blank" rel="noopener noreferrer">Judge tosses Trump’s suit against Iowa pollster</a></div></div>
+    </div>
+    <div class="sources-note">also: AP, Al Jazeera, BBC, CBS News, Reuters, UPI</div>
   </div>
   <hr class="main">
   <div class="cols">
     <div class="col">
-      <div class="item"><a href="https://www.aljazeera.com/news/2026/9/24/ai-corporate-leaders-tell-un-the-industry-needs-global-regulation?traffic_source=rss" target="_blank" rel="noopener noreferrer" style="color:#c00">OpenAI, Anthropic CEOs call for global AI regulation at UN</a></div>
-      <div class="item"><a href="https://www.nytimes.com/2026/09/23/world/board-of-peace-gaza-6-month-plan.html" target="_blank" rel="noopener noreferrer" style="color:#c00">Trump’s Board of Peace Lays Out 6-Month Plan for Gaza That Faces Roadblocks</a></div>
-      <div class="item"><a href="https://www.nytimes.com/2026/09/23/us/politics/des-moines-register-trump-lawsuit.html" target="_blank" rel="noopener noreferrer" style="color:#c00">Iowa Judge Dismisses Trump’s Lawsuit Against The Des Moines Register</a></div>
-      <div class="item"><a href="https://www.nytimes.com/2026/09/23/world/canada/mark-carney-canada-us-trump-tariffs.html" target="_blank" rel="noopener noreferrer" style="color:#c00">Mark Carney Interview: Canada’s Leader Lays Out Vision for Breaking Reliance on U.S.</a></div>
-      <div class="item"><a href="https://www.upi.com/Top_News/US/2026/09/23/gallup-poll-more-americans-have-positive-view-of-socialism/8651790211669/" target="_blank" rel="noopener noreferrer">Poll: More than 40% of Americans have positive view of socialism</a></div>
+      <div class="story-img"><a href="https://www.aljazeera.com/news/2026/9/24/ai-corporate-leaders-tell-un-the-industry-needs-global-regulation?traffic_source=rss" target="_blank" rel="noopener noreferrer"><img src="https://s.abcnews.com/images/US/altman-un-3-rt-gmh-260923_1790191381590_hpMain_4x3t_384.jpg" alt="" referrerpolicy="no-referrer" loading="lazy"></a><div class="img-cap"><a href="https://www.aljazeera.com/news/2026/9/24/ai-corporate-leaders-tell-un-the-industry-needs-global-regulation?traffic_source=rss" target="_blank" rel="noopener noreferrer">OpenAI, Anthropic CEOs call for global AI regulation at UN</a></div></div>
+      <div class="item"><a href="https://www.nytimes.com/2026/09/23/world/canada/mark-carney-canada-us-trump-tariffs.html" target="_blank" rel="noopener noreferrer">Mark Carney Interview: Canada’s Leader Lays Out Vision for Breaking Reliance on U.S.</a></div>
+      <div class="story-img"><a href="https://www.nytimes.com/2026/09/23/world/board-of-peace-gaza-6-month-plan.html" target="_blank" rel="noopener noreferrer"><img src="https://static01.nyt.com/images/2026/09/23/multimedia/23unga-live-board-of-peace-topart-cqwh/23unga-live-board-of-peace-topart-cqwh-mediumSquareAt3X.jpg" alt="" referrerpolicy="no-referrer" loading="lazy"></a><div class="img-cap"><a href="https://www.nytimes.com/2026/09/23/world/board-of-peace-gaza-6-month-plan.html" target="_blank" rel="noopener noreferrer">Trump’s Board of Peace Lays Out 6-Month Plan for Gaza That Faces Roadblocks</a></div></div>
+      <div class="item"><a href="https://www.nytimes.com/2026/09/23/world/asia/australia-openai-agent-infiltration.html" target="_blank" rel="noopener noreferrer">Australia Says OpenAI ‘Infiltrated’ Public Health Care Portal</a></div>
+      <hr>
+      <div class="item"><a href="https://www.nytimes.com/2026/09/23/briefing/at-the-un-iran-says-it-will-not-give-up-its-nuclear-program.html" target="_blank" rel="noopener noreferrer">At the U.N., Iran Says It Will Not Give Up Its Nuclear Program</a></div>
+      <div class="story-img"><a href="https://www.bbc.co.uk/news/articles/c6gqdgg8w59xo?at_medium=RSS&amp;at_campaign=rss" target="_blank" rel="noopener noreferrer"><img src="https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/149c/live/60c365b0-b306-11f1-aa6a-fb974fe212f6.jpg" alt="" referrerpolicy="no-referrer" loading="lazy"></a><div class="img-cap"><a href="https://www.bbc.co.uk/news/articles/c6gqdgg8w59xo?at_medium=RSS&amp;at_campaign=rss" target="_blank" rel="noopener noreferrer">AI superpower ambitions take centre stage as Trump and Xi meet</a></div></div>
+      <div class="item"><a href="https://www.bbc.co.uk/news/articles/cwp80l0my1x2o?at_medium=RSS&amp;at_campaign=rss" target="_blank" rel="noopener noreferrer">They were labelled 'pervert glasses'. Will a camera-free version transform their image?</a></div>
+      <div class="item"><a href="https://www.cbsnews.com/news/dolly-parton-estate-restraining-order-nephew-threats/" target="_blank" rel="noopener noreferrer">Dolly Parton's estate granted restraining order against her nephew</a></div>
+      <div class="item"><a href="https://www.axios.com/2026/09/23/hands-on-with-metas-next-vr-headset" target="_blank" rel="noopener noreferrer">Hands-on with Meta's next VR headset</a></div>
+      <div class="item"><a href="https://news.sky.com/story/teenagers-in-england-to-be-offered-new-vocational-gcses-13591233" target="_blank" rel="noopener noreferrer">Teenagers to be offered new vocational GCSEs</a></div>
+      <hr>
+      <div class="item"><a href="https://www.bbc.co.uk/news/articles/cmvgy4237gq9o?at_medium=RSS&amp;at_campaign=rss" target="_blank" rel="noopener noreferrer">UK survivor of Canadian poison seller says he exploited her despair</a></div>
+      <div class="item"><a href="https://www.meta.com/vr-glasses/" target="_blank" rel="noopener noreferrer">Meta VR Glasses</a></div>
+      <div class="item"><a href="https://www.upi.com/Top_News/World-News/2026/09/23/zelensky-tells-un-general-assembly-war-could-spread/2021790196620/" target="_blank" rel="noopener noreferrer">Zelensky warns U.N. about Putin, spread of Russian war, AI in battle</a></div>
+      <div class="item"><a href="https://www.nytimes.com/2026/09/23/us/politics/mary-peltola-alaska-senate-race.html" target="_blank" rel="noopener noreferrer">Mary Peltola’s Campaign in Alaska Senate Race Is Rocked by Tumult, With Angry Outbursts and Slurs</a></div>
+      <div class="item"><a href="https://www.nbcnews.com/news/us-news/sunny-hostin-holdout-juror-butcher-tompkins-square-park-rcna599515" target="_blank" rel="noopener noreferrer">Sunny Hostin reveals she was holdout juror in 1991 ‘Butcher of Tompkins Square Park’ trial</a></div>
+      <hr>
+      <div class="item"><a href="https://nypost.com/2026/09/23/sports/don-cooper-beloved-world-series-winning-white-sox-coach-dead-at-70/" target="_blank" rel="noopener noreferrer">Don Cooper, NY native and beloved World Series-winning White Sox coach, dead at 70</a></div>
+      <div class="item"><a href="https://www.nytimes.com/2026/09/23/us/ottawa-canada-renaming-trump-avenue.html" target="_blank" rel="noopener noreferrer">Canada’s Capital Bids Good Riddance to Trump Avenue as Tensions With U.S. Rise</a></div>
+      <div class="item"><a href="https://thehill.com/homenews/campaign/6107823-gruters-gop-house-senate-majorities-prediction/" target="_blank" rel="noopener noreferrer">RNC chair predicts GOP keeps House, 53 Senate seats</a></div>
+      <div class="item"><a href="https://pagesix.com/2026/09/23/entertainment/peter-byrne-singer-of-80s-new-wave-band-naked-eyes-dead-at-74/" target="_blank" rel="noopener noreferrer">Singer from beloved ’80s New Wave band dead at 74</a></div>
+      <div class="item"><a href="https://www.politico.com/news/2026/09/23/ai-securty-world-us-china-unga-01090989" target="_blank" rel="noopener noreferrer">The world wants to secure AI. It may have to try without the US.</a></div>
+    </div>
+    <div class="col">
+      <div class="story-img"><a href="https://www.upi.com/Top_News/US/2026/09/23/chinese-president-Xi-arrives-in-united-states/9451790207301/" target="_blank" rel="noopener noreferrer"><img src="https://cdnph.upi.com/ph/st/th/9451790207301/2026/upi/c3f633f818b2fd2a01ebd59e18a1a58d/v1.5/Chinese-President-Xi-Jinping-arrives-in-United-States-for-state-visit.jpg" alt="" referrerpolicy="no-referrer" loading="lazy"></a><div class="img-cap"><a href="https://www.upi.com/Top_News/US/2026/09/23/chinese-president-Xi-arrives-in-united-states/9451790207301/" target="_blank" rel="noopener noreferrer">Chinese President Xi Jinping arrives in United States for state visit</a></div></div>
+      <div class="item"><a href="https://techcrunch.com/2026/09/23/everything-new-coming-to-metas-ai-agent-muse/" target="_blank" rel="noopener noreferrer">Everything new coming to Meta’s AI agent Muse</a></div>
+      <div class="story-img"><a href="https://news.sky.com/story/son-of-israeli-ambassador-to-us-seriously-injured-in-west-bank-ramming-attack-13591205" target="_blank" rel="noopener noreferrer"><img src="https://e3.365dm.com/26/09/1920x1080/skynews-beit-horon-west-bank_7359880.jpg?20260923231154" alt="" referrerpolicy="no-referrer" loading="lazy"></a><div class="img-cap"><a href="https://news.sky.com/story/son-of-israeli-ambassador-to-us-seriously-injured-in-west-bank-ramming-attack-13591205" target="_blank" rel="noopener noreferrer">Son of Israeli ambassador to US 'seriously injured' in West Bank ramming attack</a></div></div>
+      <div class="item"><a href="https://www.foxnews.com/politics/illegal-alien-allegedly-grabs-school-police-officer-gun-shoots-femoral-artery-doj" target="_blank" rel="noopener noreferrer">Illegal alien allegedly grabs school police officer's gun, shoots him in femoral artery: DOJ</a></div>
       <hr>
       <div class="item"><a href="https://www.foxnews.com/politics/michigan-student-confronts-el-sayed-over-iran-stance-tense-exchange-do-you-stand-us" target="_blank" rel="noopener noreferrer">Michigan student confronts El-Sayed over Iran stance in tense exchange: ‘Do you stand with us?’</a></div>
+      <div class="story-img"><a href="https://www.foxnews.com/media/bessent-reveals-extension-busan-agreement-china-january" target="_blank" rel="noopener noreferrer"><img src="https://a57.foxnews.com/static.foxnews.com/foxnews.com/content/uploads/2026/02/931/523/scott-bessent-testimony-waters-fight.png?ve=1&amp;tl=1" alt="" referrerpolicy="no-referrer" loading="lazy"></a><div class="img-cap"><a href="https://www.foxnews.com/media/bessent-reveals-extension-busan-agreement-china-january" target="_blank" rel="noopener noreferrer">Bessent reveals extension to Busan agreement with China until January</a></div></div>
+      <div class="item"><a href="https://www.politico.com/news/2026/09/23/nrsc-tim-scott-georgia-north-carolina-senate-01090764" target="_blank" rel="noopener noreferrer">NRSC Chair Tim Scott leaves Georgia, North Carolina off his list of top Senate targets</a></div>
+      <div class="item"><a href="https://www.cbsnews.com/video/california-six-flags-rollercoaster-left-more-than-100-people-with-brain-injuries-attorneys-say/" target="_blank" rel="noopener noreferrer">California Six Flags rollercoaster left more than 100 people with brain injuries, attorneys say</a></div>
+      <div class="item"><a href="https://www.bbc.co.uk/news/articles/cn4klprmr0go?at_medium=RSS&amp;at_campaign=rss" target="_blank" rel="noopener noreferrer">'Make women feel seen': Why the Dutch have a new word for labia</a></div>
+      <div class="item"><a href="https://www.upi.com/Top_News/US/2026/09/23/melania-trump-nyse-opening-bell/4511790191244/" target="_blank" rel="noopener noreferrer">First lady Melania Trump rings the NYSE opening bell, launches IMPERIA for women</a></div>
+      <hr>
+      <div class="item"><a href="https://nypost.com/2026/09/23/sports/kirk-cousins-reveals-meagan-good-as-celebrity-crush/" target="_blank" rel="noopener noreferrer">Raiders’ Kirk Cousins reveals shocking love interest</a></div>
+      <div class="item"><a href="https://www.upi.com/Top_News/World-News/2026/09/23/latam-venezuela-delcy-rodriguez-un-speech/1001790209288/" target="_blank" rel="noopener noreferrer">Venezuela’s Rodríguez thanks Trump, pledges elections in U.N. speech</a></div>
+      <div class="item"><a href="https://nypost.com/2026/09/23/us-news/stanislaus-trench-collapse-victim-identified-as-former-star-soccer-player/" target="_blank" rel="noopener noreferrer">Soccer star identified as worker killed in horror California trench collapse</a></div>
+      <div class="item"><a href="https://www.npr.org/2026/09/23/nx-s1-5979140/hurricane-polo-mexico-nolo-hawaii" target="_blank" rel="noopener noreferrer">Hurricane Polo fuels fears of landslides in Mexico as Nolo closes in on Hawaii</a></div>
+      <div class="item"><a href="https://www.axios.com/2026/09/23/john-thune-senate-republican-leader-trump" target="_blank" rel="noopener noreferrer">Exclusive: Thune plans another leader bid as Senate GOP fights to survive</a></div>
+      <hr>
+      <div class="item"><a href="https://www.upi.com/Top_News/US/2026/09/23/Texas-executes-Kersean-Ramey/4181790210180/" target="_blank" rel="noopener noreferrer">Texas executes second man convicted in 2005 triple murder</a></div>
+      <div class="item"><a href="https://thehill.com/policy/energy-environment/6107616-business-groups-urge-trump-diesel-ban/" target="_blank" rel="noopener noreferrer">Chamber of Commerce, oil groups urge Trump to reject diesel export ban</a></div>
+      <div class="item"><a href="https://www.theguardian.com/society/2026/sep/23/approach-to-high-blood-pressure-in-england-not-fit-for-purpose" target="_blank" rel="noopener noreferrer">Millions in England unaware they have ‘silent killer’ condition, research reveals</a></div>
+      <div class="item"><a href="https://www.nytimes.com/2026/09/23/world/asia/ukraine-north-south-korea-pow-zelensky.html" target="_blank" rel="noopener noreferrer">​Ukraine Sent Two North Korean P.O.W.s to South Korea, Zelensky Says</a></div>
+      <div class="item"><a href="https://www.upi.com/Top_News/World-News/2026/09/23/mexico-hurricane-polo-forecast/6371790098673/" target="_blank" rel="noopener noreferrer">Hurricane Polo nears Category 5 intensity again after weakening</a></div>
+    </div>
+    <div class="col">
+      <div class="story-img"><a href="https://www.nytimes.com/2026/09/23/us/politics/uss-lincoln-attempted-suicides.html" target="_blank" rel="noopener noreferrer"><img src="https://static01.nyt.com/images/2026/09/23/multimedia/23dc-navy-qjzh/23dc-navy-qjzh-mediumSquareAt3X.jpg" alt="" referrerpolicy="no-referrer" loading="lazy"></a><div class="img-cap"><a href="https://www.nytimes.com/2026/09/23/us/politics/uss-lincoln-attempted-suicides.html" target="_blank" rel="noopener noreferrer">8 Sailors in U.S.S. Lincoln Strike Group Attempted Suicide, Navy Says</a></div></div>
+      <div class="item"><a href="https://www.bbc.co.uk/news/articles/ck3wjyjgj37po?at_medium=RSS&amp;at_campaign=rss" target="_blank" rel="noopener noreferrer">In Amish country, nurses go door to door to stop deadly spread of measles</a></div>
+      <div class="story-img"><a href="https://www.nytimes.com/2026/09/23/us/politics/trump-aides-iran-talks.html" target="_blank" rel="noopener noreferrer"><img src="https://static01.nyt.com/images/2026/09/23/multimedia/23dc-iran-diplo-fwmb/23dc-iran-diplo-fwmb-mediumSquareAt3X.jpg" alt="" referrerpolicy="no-referrer" loading="lazy"></a><div class="img-cap"><a href="https://www.nytimes.com/2026/09/23/us/politics/trump-aides-iran-talks.html" target="_blank" rel="noopener noreferrer">Trump Aides Seek to Jump Start Diplomacy With Iran as Crisis Widens</a></div></div>
+      <div class="item"><a href="https://www.upi.com/Top_News/US/2026/09/23/gallup-poll-more-americans-have-positive-view-of-socialism/8651790211669/" target="_blank" rel="noopener noreferrer">Poll: More than 40% of Americans have positive view of socialism</a></div>
+      <hr>
+      <div class="item"><a href="https://www.aljazeera.com/news/2026/9/24/venezuelas-delcy-rodriguez-promises-elections-at-un-gives-no-date?traffic_source=rss" target="_blank" rel="noopener noreferrer">Venezuela’s Delcy Rodriguez promises elections at UN, gives no date</a></div>
+      <div class="story-img"><a href="https://www.npr.org/2026/09/23/nx-s1-5979101/federal-judge-hearing-trump-ban-cnn-ms-now-politico" target="_blank" rel="noopener noreferrer"><img src="https://npr.brightspotcdn.com/dims3/default/strip/false/crop/4932x3289+0+0/resize/4932x3289!/?url=http%3A%2F%2Fnpr-brightspot.s3.amazonaws.com%2Fa8%2Fd9%2F0a21cddf4d56a527ef5a95fe71dc%2Fgettyimages-2295956926.jpg" alt="" referrerpolicy="no-referrer" loading="lazy"></a><div class="img-cap"><a href="https://www.npr.org/2026/09/23/nx-s1-5979101/federal-judge-hearing-trump-ban-cnn-ms-now-politico" target="_blank" rel="noopener noreferrer">Judge considers restoring journalists' access to White House after Trump's ban</a></div></div>
       <div class="item"><a href="https://www.foxnews.com/politics/nyc-kitten-rescue-defends-no-f-ing-maga-adoption-policy-peta-calls-abolished" target="_blank" rel="noopener noreferrer">NYC kitten rescue defends ‘NO F---ING MAGA’ adoption policy as PETA calls for it to be abolished</a></div>
       <div class="item"><a href="https://www.bbc.co.uk/news/articles/c60qxywdx4vvo?at_medium=RSS&amp;at_campaign=rss" target="_blank" rel="noopener noreferrer">Residents eating garden weeds in Russian-occupied city cut off from food and water</a></div>
       <div class="item"><a href="https://www.bbc.co.uk/news/articles/cwn741v5rdpxo?at_medium=RSS&amp;at_campaign=rss" target="_blank" rel="noopener noreferrer">Indians are discovering the thrill of shopping without paying</a></div>
       <div class="item"><a href="https://www.politico.com/news/2026/09/23/trump-beef-imports-midterms-gop-panic-01090261" target="_blank" rel="noopener noreferrer">Trump officials weigh rolling back beef import plan as GOP midterm panic spreads</a></div>
       <hr>
-      <div class="item"><a href="https://www.meta.com/vr-glasses/" target="_blank" rel="noopener noreferrer">Meta VR Glasses</a></div>
-      <div class="item"><a href="https://nypost.com/2026/09/23/us-news/doj-charges-tech-ceo-in-scheme-to-sell-russian-software-to-us/" target="_blank" rel="noopener noreferrer">Sinister network of Russian agents busted in Cold War-style plot to infiltrate the US Secret Service using American tech CEO</a></div>
-      <div class="item"><a href="https://www.nbcnews.com/news/us-news/sunny-hostin-holdout-juror-butcher-tompkins-square-park-rcna599515" target="_blank" rel="noopener noreferrer">Sunny Hostin reveals she was holdout juror in 1991 ‘Butcher of Tompkins Square Park’ trial</a></div>
-      <div class="item"><a href="https://nypost.com/2026/09/23/sports/davante-adams-highlights-his-purple-taco-bell-card/" target="_blank" rel="noopener noreferrer">Davante Adams reveals unique purple Taco Bell card</a></div>
-      <div class="item"><a href="https://www.nytimes.com/2026/09/23/us/politics/timothy-mellon-republicans-midterms.html" target="_blank" rel="noopener noreferrer">Timothy Mellon, a G.O.P. Billionaire, Pulls Back His Money From Senate Republicans</a></div>
-      <hr>
-      <div class="item"><a href="https://thehill.com/policy/energy-environment/6107616-business-groups-urge-trump-diesel-ban/" target="_blank" rel="noopener noreferrer">Chamber of Commerce, oil groups urge Trump to reject diesel export ban</a></div>
-      <div class="item"><a href="https://www.nytimes.com/2026/09/23/us/politics/mary-peltola-alaska-senate-race.html" target="_blank" rel="noopener noreferrer">Mary Peltola’s Campaign in Alaska Senate Race Is Rocked by Tumult, With Angry Outbursts and Slurs</a></div>
-      <div class="item"><a href="https://pagesix.com/2026/09/23/entertainment/peter-byrne-singer-of-80s-new-wave-band-naked-eyes-dead-at-74/" target="_blank" rel="noopener noreferrer">Singer from beloved ’80s New Wave band dead at 74</a></div>
-      <div class="item"><a href="https://news.google.com/rss/articles/CBMiqAFBVV95cUxQWDBXSVlKYjVLV1hzNnphbmpRampOMGcxUDBCVDdfanV2QmNUWk5fTW5PMFJ1SzB1VUZUQ25GUG55YXgycE13eU5jSlNiUGk5MUZTSFhHQU9pSlJXX1g3Uk82QXc4YktHdVUycnF4OEplZWRyY2txSVZEQTBHMHU3VHhHSW9NUW9HdnUwelBYdHFFSWlhWnJyUVdTUWI4dE5IODNGY2NDZC0?oc=5" target="_blank" rel="noopener noreferrer">US diplomats told to say ‘super intelligence’ — not ‘artificial intelligence’ — after Trump’s call</a></div>
-      <div class="item"><a href="https://www.bbc.co.uk/news/articles/cx62m12yrnyqo?at_medium=RSS&amp;at_campaign=rss" target="_blank" rel="noopener noreferrer">The Papers: 'RAF jet crash escape' and 'Tories to cut benefits'</a></div>
-    </div>
-    <div class="col">
-      <div class="item"><a href="https://www.upi.com/Top_News/US/2026/09/23/chinese-president-Xi-arrives-in-united-states/9451790207301/" target="_blank" rel="noopener noreferrer">Chinese President Xi Jinping arrives in United States for state visit</a></div>
-      <div class="item"><a href="https://news.sky.com/story/son-of-israeli-ambassador-to-us-seriously-injured-in-west-bank-ramming-attack-13591205" target="_blank" rel="noopener noreferrer">Son of Israeli ambassador to US 'seriously injured' in West Bank ramming attack</a></div>
-      <div class="item"><a href="https://www.nytimes.com/2026/09/23/us/politics/trump-aides-iran-talks.html" target="_blank" rel="noopener noreferrer">Trump Aides Seek to Jump Start Diplomacy With Iran as Crisis Widens</a></div>
-      <div class="item"><a href="https://www.foxnews.com/politics/illegal-alien-allegedly-grabs-school-police-officer-gun-shoots-femoral-artery-doj" target="_blank" rel="noopener noreferrer">Illegal alien allegedly grabs school police officer's gun, shoots him in femoral artery: DOJ</a></div>
-      <div class="item"><a href="https://www.nytimes.com/2026/09/23/briefing/at-the-un-iran-says-it-will-not-give-up-its-nuclear-program.html" target="_blank" rel="noopener noreferrer">At the U.N., Iran Says It Will Not Give Up Its Nuclear Program</a></div>
-      <hr>
-      <div class="item"><a href="https://www.bbc.co.uk/news/articles/cwp80l0my1x2o?at_medium=RSS&amp;at_campaign=rss" target="_blank" rel="noopener noreferrer">They were labelled 'pervert glasses'. Will a camera-free version transform their image?</a></div>
-      <div class="item"><a href="https://www.cbsnews.com/news/dolly-parton-estate-restraining-order-nephew-threats/" target="_blank" rel="noopener noreferrer">Dolly Parton's estate granted restraining order against her nephew</a></div>
-      <div class="item"><a href="https://www.axios.com/2026/09/23/hands-on-with-metas-next-vr-headset" target="_blank" rel="noopener noreferrer">Hands-on with Meta's next VR headset</a></div>
-      <div class="item"><a href="https://news.sky.com/story/teenagers-in-england-to-be-offered-new-vocational-gcses-13591233" target="_blank" rel="noopener noreferrer">Teenagers to be offered new vocational GCSEs</a></div>
-      <div class="item"><a href="https://www.bbc.co.uk/news/articles/cmvgy4237gq9o?at_medium=RSS&amp;at_campaign=rss" target="_blank" rel="noopener noreferrer">UK survivor of Canadian poison seller says he exploited her despair</a></div>
-      <hr>
       <div class="item"><a href="https://www.upi.com/Top_News/World-News/2026/09/23/canada-suspected-synagogue-gunman-dies/2161790124524/" target="_blank" rel="noopener noreferrer">SIU: Suspected gunman in Ontario synagogue shooting dies</a></div>
-      <div class="item"><a href="https://www.upi.com/Top_News/World-News/2026/09/23/zelensky-tells-un-general-assembly-war-could-spread/2021790196620/" target="_blank" rel="noopener noreferrer">Zelensky warns U.N. about Putin, spread of Russian war, AI in battle</a></div>
-      <div class="item"><a href="https://www.axios.com/2026/09/23/john-thune-senate-republican-leader-trump" target="_blank" rel="noopener noreferrer">Exclusive: Thune plans another leader bid as Senate GOP fights to survive</a></div>
+      <div class="item"><a href="https://nypost.com/2026/09/23/us-news/doj-charges-tech-ceo-in-scheme-to-sell-russian-software-to-us/" target="_blank" rel="noopener noreferrer">Sinister network of Russian agents busted in Cold War-style plot to infiltrate the US Secret Service using American tech CEO</a></div>
+      <div class="item"><a href="https://www.axios.com/2026/09/24/zelensky-ukraine-russia-war-energy-ceasefire-grain" target="_blank" rel="noopener noreferrer">Zelensky: U.S. pushing energy ceasefire, trilateral talks with Russia</a></div>
+      <div class="item"><a href="https://www.upi.com/Top_News/US/2026/09/23/hacking-group-claims-to-have-stolen-FBI-records/1261790200218/" target="_blank" rel="noopener noreferrer">Hackers say they stole thousands of FBI employee records</a></div>
       <div class="item"><a href="https://www.axios.com/2026/09/23/trump-thune-ai-regulations" target="_blank" rel="noopener noreferrer">Exclusive: Thune believes Trump is open on AI guardrails despite public defiance</a></div>
-      <div class="item"><a href="https://www.nytimes.com/2026/09/23/us/ottawa-canada-renaming-trump-avenue.html" target="_blank" rel="noopener noreferrer">Canada’s Capital Bids Good Riddance to Trump Avenue as Tensions With U.S. Rise</a></div>
       <hr>
+      <div class="item"><a href="https://www.nytimes.com/2026/09/23/us/politics/timothy-mellon-republicans-midterms.html" target="_blank" rel="noopener noreferrer">Timothy Mellon, a G.O.P. Billionaire, Pulls Back His Money From Senate Republicans</a></div>
       <div class="item"><a href="https://www.nytimes.com/2026/09/23/us/politics/melania-trump-documentary-schedule.html" target="_blank" rel="noopener noreferrer">Melania Trump’s Busy Schedule: A New Show, a Foster-Care Bill and Reading Executive Orders</a></div>
-      <div class="item"><a href="https://www.theguardian.com/society/2026/sep/23/approach-to-high-blood-pressure-in-england-not-fit-for-purpose" target="_blank" rel="noopener noreferrer">Millions in England unaware they have ‘silent killer’ condition, research reveals</a></div>
-      <div class="item"><a href="https://www.cbsnews.com/news/hurricane-polo-category-5-mexico-life-threatening-flooding/" target="_blank" rel="noopener noreferrer">Hurricane Polo is a powerful Category 4 storm off Mexico. See its path.</a></div>
-      <div class="item"><a href="https://www.bbc.co.uk/news/articles/ck3wjyjgj37po?at_medium=RSS&amp;at_campaign=rss" target="_blank" rel="noopener noreferrer">In Amish country, nurses go door to door to stop deadly spread of measles</a></div>
-      <div class="item"><a href="https://www.theguardian.com/australia-news/2026/sep/24/woodside-energy-sponsorship-deal-fremantle-afl-team-fans-logo" target="_blank" rel="noopener noreferrer">Why is Woodside sponsoring Fremantle’s AFL team – and will the climate crisis shift the relationship?</a></div>
-    </div>
-    <div class="col">
-      <div class="item"><a href="https://www.cbsnews.com/news/trump-white-house-ban-cnn-ms-now-politico-judge-court-hearing/" target="_blank" rel="noopener noreferrer">Judge skeptical of Trump's White House ban on CNN, MS NOW and Politico</a></div>
-      <div class="item"><a href="https://www.bbc.co.uk/news/articles/c6gqdgg8w59xo?at_medium=RSS&amp;at_campaign=rss" target="_blank" rel="noopener noreferrer">AI superpower ambitions take centre stage as Trump and Xi meet</a></div>
-      <div class="item"><a href="https://www.foxnews.com/media/bessent-reveals-extension-busan-agreement-china-january" target="_blank" rel="noopener noreferrer">Bessent reveals extension to Busan agreement with China until January</a></div>
-      <div class="item"><a href="https://www.aljazeera.com/news/2026/9/24/venezuelas-delcy-rodriguez-promises-elections-at-un-gives-no-date?traffic_source=rss" target="_blank" rel="noopener noreferrer">Venezuela’s Delcy Rodriguez promises elections at UN, gives no date</a></div>
-      <div class="item"><a href="https://techcrunch.com/2026/09/23/everything-new-coming-to-metas-ai-agent-muse/" target="_blank" rel="noopener noreferrer">Everything new coming to Meta’s AI agent Muse</a></div>
-      <hr>
-      <div class="item"><a href="https://www.politico.com/news/2026/09/23/nrsc-tim-scott-georgia-north-carolina-senate-01090764" target="_blank" rel="noopener noreferrer">NRSC Chair Tim Scott leaves Georgia, North Carolina off his list of top Senate targets</a></div>
-      <div class="item"><a href="https://www.cbsnews.com/video/california-six-flags-rollercoaster-left-more-than-100-people-with-brain-injuries-attorneys-say/" target="_blank" rel="noopener noreferrer">California Six Flags rollercoaster left more than 100 people with brain injuries, attorneys say</a></div>
-      <div class="item"><a href="https://www.bbc.co.uk/news/articles/cn4klprmr0go?at_medium=RSS&amp;at_campaign=rss" target="_blank" rel="noopener noreferrer">'Make women feel seen': Why the Dutch have a new word for labia</a></div>
-      <div class="item"><a href="https://www.upi.com/Top_News/US/2026/09/23/melania-trump-nyse-opening-bell/4511790191244/" target="_blank" rel="noopener noreferrer">First lady Melania Trump rings the NYSE opening bell, launches IMPERIA for women</a></div>
-      <div class="item"><a href="https://nypost.com/2026/09/23/sports/kirk-cousins-reveals-meagan-good-as-celebrity-crush/" target="_blank" rel="noopener noreferrer">Raiders’ Kirk Cousins reveals shocking love interest</a></div>
-      <hr>
-      <div class="item"><a href="https://www.upi.com/Top_News/World-News/2026/09/23/latam-venezuela-delcy-rodriguez-un-speech/1001790209288/" target="_blank" rel="noopener noreferrer">Venezuela’s Rodríguez thanks Trump, pledges elections in U.N. speech</a></div>
-      <div class="item"><a href="https://nypost.com/2026/09/23/us-news/barrett-walsh-2-year-old-allegedly-killed-by-lindsay-clancy-obsessed-mom-corie-walsh-remembered-as-a-rambunctious-tot-in-heartbreaking-obit/" target="_blank" rel="noopener noreferrer">Barrett Walsh – 2-year-old allegedly killed by Lindsay Clancy-obsessed mom Corie Walsh – remembered as a ‘rambunctious’ tot in heartbreaking obit</a></div>
-      <div class="item"><a href="https://www.cbsnews.com/news/storm-nolo-hurricane-hawaii/" target="_blank" rel="noopener noreferrer">Hawaii is facing another hurricane watch as new storm closes in</a></div>
-      <div class="item"><a href="https://www.upi.com/Top_News/US/2026/09/23/Texas-executes-Kersean-Ramey/4181790210180/" target="_blank" rel="noopener noreferrer">Texas executes second man convicted in 2005 triple murder</a></div>
-      <div class="item"><a href="https://thehill.com/newsletters/technology/6107546-voters-increasingly-use-ai-for-election-info-despite-accuracy-risks/" target="_blank" rel="noopener noreferrer">Voters increasingly use AI for election info despite accuracy risks</a></div>
-      <hr>
-      <div class="item"><a href="https://thehill.com/homenews/campaign/6107823-gruters-gop-house-senate-majorities-prediction/" target="_blank" rel="noopener noreferrer">RNC chair predicts GOP keeps House, 53 Senate seats</a></div>
       <div class="item"><a href="https://nypost.com/2026/09/23/opinion/gel-hair-man-shuts-off-ai-to-please-area-karens/" target="_blank" rel="noopener noreferrer">Gel hair man shuts off AI to please area Karens</a></div>
-      <div class="item"><a href="https://www.politico.com/news/2026/09/23/ai-securty-world-us-china-unga-01090989" target="_blank" rel="noopener noreferrer">The world wants to secure AI. It may have to try without the US.</a></div>
-      <div class="item"><a href="https://www.foxnews.com/world/trump-smirked-iranian-president-lashed-us-fiery-un-speech-expert" target="_blank" rel="noopener noreferrer">Trump likely ‘smirked’ as 'crass' Iranian president lashed out at US in UN speech: expert</a></div>
-      <div class="item"><a href="https://www.foxnews.com/entertainment/home-improvement-star-jonathan-taylor-thomas-arrested-alleged-public-intoxication-resisting-deputy" target="_blank" rel="noopener noreferrer">'Home Improvement' star Jonathan Taylor Thomas arrested for alleged public intoxication, resisting deputy</a></div>
+      <div class="item"><a href="https://www.theguardian.com/australia-news/live/2026/sep/24/anthony-albanese-un-summit-labor-coalition-ukraine-ntwnfb" target="_blank" rel="noopener noreferrer">Australia news live: Government fined $140,000 after child’s hands caught fire at Questacon; unemployment at highest rate since pandemic</a></div>
+      <div class="item"><a href="https://www.cbsnews.com/news/florida-governor-candidate-byron-donalds-trump-mentions-disappear-from-website/" target="_blank" rel="noopener noreferrer">Florida gov. candidate Byron Donalds responds after Trump mentions disappear from site</a></div>
     </div>
   </div>
   <hr class="main">

@@ -125,33 +125,124 @@ def jaccard(a: frozenset[str], b: frozenset[str]) -> float:
     return inter / union if union else 0.0
 
 
+def _clean_img_url(url: str) -> Optional[str]:
+    """Normalize a candidate image URL; reject trackers / empties."""
+    if not url:
+        return None
+    url = html.unescape(url.strip())
+    if not url.startswith(("http://", "https://")):
+        return None
+    low = url.lower()
+    # Skip 1x1 trackers, sprites, icons, logos used as filler
+    for bad in (
+        "pixel", "tracking", "spacer", "1x1", "blank.gif",
+        "/icon", "favicon", "logo-rss", "rss-logo", "gravatar",
+        "/64x64/", "/96x96/", "/100x100/", "/128x128/", "/150x150/",
+    ):
+        if bad in low:
+            return None
+    if not _looks_like_image(url):
+        return None
+    return url
+
+
 def extract_image(entry) -> Optional[str]:
+    """Pull a real image URL from common RSS/Atom media fields + HTML bodies."""
+    # media:content (may be a list of dicts; some feeds emit empty {})
     if getattr(entry, "media_content", None):
         for m in entry.media_content:
-            url = m.get("url")
-            if url and _looks_like_image(url):
-                return url
+            if not isinstance(m, dict):
+                continue
+            url = m.get("url") or m.get("href")
+            typ = (m.get("type") or "").lower()
+            medium = (m.get("medium") or "").lower()
+            if url and (medium == "image" or typ.startswith("image/") or _looks_like_image(url)):
+                cleaned = _clean_img_url(url)
+                if cleaned:
+                    return cleaned
+    # media:thumbnail
     if getattr(entry, "media_thumbnail", None):
         for m in entry.media_thumbnail:
-            url = m.get("url")
-            if url:
-                return url
+            if not isinstance(m, dict):
+                continue
+            cleaned = _clean_img_url(m.get("url") or m.get("href") or "")
+            if cleaned:
+                return cleaned
+    # enclosures
     for enc in getattr(entry, "enclosures", []) or []:
         href = enc.get("href") or enc.get("url")
         typ = (enc.get("type") or "").lower()
         if href and (typ.startswith("image/") or _looks_like_image(href)):
-            return href
-    # Sometimes images are buried in summary HTML
-    summary = entry.get("summary") or entry.get("description") or ""
-    m = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', summary, re.I)
-    if m:
-        return m.group(1)
+            cleaned = _clean_img_url(href)
+            if cleaned:
+                return cleaned
+    # Atom/RSS links with type=image or rel=enclosure
+    for link in entry.get("links") or []:
+        typ = (link.get("type") or "").lower()
+        rel = (link.get("rel") or "").lower()
+        href = link.get("href") or ""
+        if href and (typ.startswith("image/") or rel in ("enclosure", "image") and _looks_like_image(href)):
+            cleaned = _clean_img_url(href)
+            if cleaned:
+                return cleaned
+    # HTML bodies: summary/description + Atom content[]
+    blobs: list[str] = []
+    for key in ("summary", "description"):
+        v = entry.get(key)
+        if v:
+            blobs.append(v)
+    for c in entry.get("content") or []:
+        v = c.get("value") if isinstance(c, dict) else None
+        if v:
+            blobs.append(v)
+    blob = "\n".join(blobs)
+    if blob:
+        # Prefer <img src=...>
+        for m in re.finditer(r'<img\b[^>]*(?:src|data-src)=["\']([^"\']+)["\']', blob, re.I):
+            cleaned = _clean_img_url(m.group(1))
+            if cleaned:
+                return cleaned
+        # Open Graph-ish meta / bare image URLs in content
+        for m in re.finditer(
+            r'(?:og:image|twitter:image)[^>\s]*content=["\']([^"\']+)["\']',
+            blob,
+            re.I,
+        ):
+            cleaned = _clean_img_url(m.group(1))
+            if cleaned:
+                return cleaned
+        for m in re.finditer(
+            r'https?://[^\s"\'<>]+\.(?:jpg|jpeg|png|gif|webp)(?:\?[^\s"\'<>]*)?',
+            blob,
+            re.I,
+        ):
+            cleaned = _clean_img_url(m.group(0))
+            if cleaned:
+                return cleaned
     return None
 
 
 def _looks_like_image(url: str) -> bool:
-    path = urlparse(url).path.lower()
-    return any(path.endswith(ext) for ext in (".jpg", ".jpeg", ".png", ".gif", ".webp")) or "image" in path
+    """True if URL path (after unquoting, ignoring query) looks like an image."""
+    from urllib.parse import unquote
+    parsed = urlparse(url)
+    path = unquote(parsed.path).lower()
+    # NY Post etc. double-encode path segments
+    path2 = unquote(path)
+    for p in (path, path2):
+        if any(p.endswith(ext) for ext in (".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif")):
+            return True
+        if "/image" in p or "/images/" in p or "/photos/" in p or "/thumb" in p:
+            return True
+        if "media." in (parsed.netloc or "").lower():
+            return True
+    # Query-string image hosts (NPR brightspotcdn dims proxy, etc.)
+    q = (parsed.query or "").lower()
+    if any(ext in q for ext in (".jpg", ".jpeg", ".png", ".gif", ".webp")):
+        return True
+    if "image" in path or "img" in path:
+        return True
+    return False
 
 
 def parse_published(entry) -> Optional[datetime]:
@@ -372,7 +463,7 @@ def score_cluster(cluster: Cluster, now: datetime) -> float:
 
     boost = keyword_boost(cluster.best.title)
     # Slight preference for having an image (lead candidate)
-    image_bonus = 0.8 if cluster.image else 0.0
+    image_bonus = 1.2 if cluster.image else 0.0
     # Prefer political/wire categories slightly for lead
     cat_bonus = 0.0
     cats = {it.category for it in cluster.items}
@@ -411,6 +502,157 @@ def esc_attr(s: str) -> str:
     return html.escape(s, quote=True)
 
 
+
+def normalize_image_key(url: str) -> str:
+    """Collapse query/size variants so near-duplicate CDN URLs dedupe."""
+    if not url:
+        return ""
+    try:
+        from urllib.parse import urlparse, unquote
+        p = urlparse(url)
+        path = unquote(unquote(p.path)).lower().rstrip("/")
+        # Drop common size suffixes / resize path noise for dedupe
+        path = re.sub(r"/\d+x\d+/", "/", path)
+        path = re.sub(r"[-_]\d{2,4}x\d{2,4}(?=\.|$)", "", path)
+        return f"{p.netloc.lower()}{path}"
+    except Exception:
+        return url.lower().split("?")[0]
+
+
+def pick_page_images(
+    lead: "Cluster",
+    teasers: list["Cluster"],
+    columns: list[list["Cluster"]],
+    *,
+    max_total: int = 14,
+    max_top: int = 4,
+    max_per_column: int = 4,
+) -> tuple[Optional[str], list[tuple["Cluster", str]], list[list[tuple[int, "Cluster", str]]]]:
+    """Choose distinct real image URLs for lead, top flankers, and column slots.
+
+    Returns:
+      lead_img,
+      top_images: list of (cluster, url) for teaser/flank area,
+      col_images: per-column list of (insert_after_index, cluster, url)
+        where insert_after_index is the story index after which to place the photo.
+    """
+    used_keys: set[str] = set()
+    used_links: set[str] = set()
+
+    def take(c: "Cluster") -> Optional[str]:
+        url = c.image
+        if not url:
+            return None
+        key = normalize_image_key(url)
+        if not key or key in used_keys:
+            return None
+        if c.best.link in used_links:
+            return None
+        used_keys.add(key)
+        used_links.add(c.best.link)
+        return url
+
+    lead_img = take(lead)
+    remaining_budget = max_total - (1 if lead_img else 0)
+
+    # Top / flank images: prefer teaser stories with images, then high-scoring column stories
+    top_images: list[tuple["Cluster", str]] = []
+    candidates = list(teasers)
+    for col in columns:
+        candidates.extend(col)
+    # Prefer higher-score + varied source
+    seen_sources: set[str] = set()
+    ranked = sorted(
+        candidates,
+        key=lambda c: (
+            0 if c.image else 1,
+            0 if c.best.source not in seen_sources else 1,
+            -c.score,
+        ),
+    )
+    for c in ranked:
+        if len(top_images) >= max_top or remaining_budget <= 0:
+            break
+        if c is lead:
+            continue
+        url = take(c)
+        if url:
+            top_images.append((c, url))
+            seen_sources.add(c.best.source)
+            remaining_budget -= 1
+
+    # Column images: interleaved, 2–4 per column, skip already-used
+    col_images: list[list[tuple[int, "Cluster", str]]] = [[] for _ in columns]
+    per_col_target = min(max_per_column, max(2, remaining_budget // max(1, len(columns))))
+    for ci, col in enumerate(columns):
+        if remaining_budget <= 0:
+            break
+        # Spread inserts: after indices ~2, 6, 11, 16 ...
+        slots = []
+        n = len(col)
+        if n == 0:
+            continue
+        desired = min(per_col_target, remaining_budget, max_per_column)
+        if desired <= 0:
+            continue
+        # Evenly spaced insert points among the column
+        step = max(2, n // (desired + 1))
+        for k in range(desired):
+            idx = min(n - 1, step * (k + 1) - 1)
+            slots.append(idx)
+        picked_here = 0
+        used_slot_idx: set[int] = set()
+        # Walk column in score order for image-bearing stories, map to nearest free slot
+        img_stories = [(i, c) for i, c in enumerate(col) if c.image]
+        # Prefer varied sources within column
+        img_stories.sort(key=lambda pair: -pair[1].score)
+        for i, c in img_stories:
+            if picked_here >= desired or remaining_budget <= 0:
+                break
+            url = take(c)
+            if not url:
+                continue
+            # Place after this story's own index (Drudge: photo under/near its headline)
+            insert_at = i
+            # Avoid stacking two images on consecutive slots
+            if insert_at in used_slot_idx or (insert_at - 1) in used_slot_idx or (insert_at + 1) in used_slot_idx:
+                # try shift
+                alt = None
+                for delta in (2, -2, 3, -3, 4, 1, -1):
+                    j = insert_at + delta
+                    if 0 <= j < n and j not in used_slot_idx and (j - 1) not in used_slot_idx:
+                        alt = j
+                        break
+                if alt is None:
+                    # still allow if we have budget and no better slot
+                    if any(abs(insert_at - u) <= 1 for u in used_slot_idx):
+                        # undo take
+                        used_keys.discard(normalize_image_key(url))
+                        used_links.discard(c.best.link)
+                        continue
+                else:
+                    insert_at = alt
+            used_slot_idx.add(insert_at)
+            col_images[ci].append((insert_at, c, url))
+            picked_here += 1
+            remaining_budget -= 1
+        col_images[ci].sort(key=lambda t: t[0])
+
+    return lead_img, top_images, col_images
+
+
+def render_story_image(item: "Item", url: str, *, css_class: str = "story-img") -> str:
+    """Linked photo + optional caption (headline) under it — Drudge column style."""
+    return (
+        f'<div class="{css_class}">'
+        f'<a href="{esc_attr(item.link)}" target="_blank" rel="noopener noreferrer">'
+        f'<img src="{esc_attr(url)}" alt="" referrerpolicy="no-referrer" loading="lazy">'
+        f"</a>"
+        f'<div class="img-cap">{format_headline_link(item)}</div>'
+        f"</div>"
+    )
+
+
 def format_headline_link(item: Item, *, red: bool = False, big: bool = False, all_caps: bool = False) -> str:
     text = item.title
     if all_caps:
@@ -442,20 +684,30 @@ def render_html(
     updated_display = updated.strftime("%a %b %-d %Y %-I:%M:%S %p ET")
 
     lead_item = lead.best
-    lead_img = lead.image
 
-    # Collect red emphasis targets (cluster ids by object identity of best link)
+    # Prefer stories with images for a few red-emphasis slots when scores are close
     red_links = set()
-    candidates = teasers + [lead] + [c for col in columns for c in col]
-    # Skip lead itself for the count of "few red" — lead is always red
-    for c in candidates:
+    candidates = teasers + [c for col in columns for c in col]
+    # Rank: splash-worthy first, then slight preference for having an image
+    def red_key(c: Cluster):
+        splash = (
+            1 if len(c.sources) >= 3 else
+            1 if (len(c.sources) >= 2 and c.score >= 14) else
+            1 if keyword_boost(c.best.title) >= 3.5 else
+            0
+        )
+        return (-splash, 0 if c.image else 1, -c.score)
+
+    for c in sorted(candidates, key=red_key):
         if c is lead:
             continue
         if len(red_links) >= config.RED_EMPHASIS_COUNT:
             break
-        # Prefer multi-source or strongly keyworded stories for splash red
-        if len(c.sources) >= 3 or (len(c.sources) >= 2 and c.score >= 14) or keyword_boost(c.best.title) >= 3.5:
+        # Keep qualification bar; image only breaks ties via sort key
+        if len(c.sources) >= 3 or (len(c.sources) >= 2 and c.score >= 14) or keyword_boost(c.best.title) >= 3.5 or c.score >= 12:
             red_links.add(c.best.link)
+
+    lead_img, top_images, col_images = pick_page_images(lead, teasers, columns)
 
     parts: list[str] = []
     parts.append(f"""<!DOCTYPE html>
@@ -512,6 +764,24 @@ def render_html(
   .teasers div {{
     margin: 3px 0;
   }}
+  .top-photos {{
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 14px 22px;
+    margin: 6px auto 12px;
+    max-width: 900px;
+    text-align: center;
+  }}
+  .top-photos .story-img {{
+    max-width: 220px;
+  }}
+  .top-photos .story-img img {{
+    max-width: 220px;
+    width: 100%;
+    height: auto;
+    border: 1px solid #000;
+  }}
   .lead-block {{
     text-align: center;
     margin: 10px auto 18px;
@@ -542,6 +812,23 @@ def render_html(
     height: auto;
     border: 1px solid #000;
   }}
+  .lead-flank {{
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 16px 20px;
+    margin: 8px auto 4px;
+  }}
+  .lead-flank .flank-img {{
+    max-width: 200px;
+  }}
+  .lead-flank .flank-img img {{
+    max-width: 200px;
+    width: 100%;
+    height: auto;
+    border: 1px solid #000;
+  }}
   .sources-note {{
     font-size: 11px;
     color: #444;
@@ -567,6 +854,26 @@ def render_html(
     margin: 0 0 9px;
     word-wrap: break-word;
   }}
+  .col .story-img {{
+    margin: 10px auto 14px;
+    text-align: center;
+    max-width: 280px;
+  }}
+  .col .story-img img {{
+    max-width: 260px;
+    width: 100%;
+    height: auto;
+    border: 1px solid #000;
+  }}
+  .img-cap {{
+    margin-top: 4px;
+    font-size: 13px;
+    line-height: 1.3;
+    text-align: center;
+  }}
+  .img-cap a {{
+    text-decoration: underline;
+  }}
   .col hr {{
     border: 0;
     border-top: 1px solid #999;
@@ -582,6 +889,11 @@ def render_html(
   @media (max-width: 800px) {{
     .cols {{ flex-direction: column; }}
     .lead-headline a {{ font-size: 22px; }}
+    .lead-flank {{ flex-direction: column; align-items: center; }}
+    .top-photos {{ flex-direction: column; align-items: center; }}
+    .col .story-img, .col .story-img img {{
+      max-width: 100%;
+    }}
   }}
 </style>
 </head>
@@ -594,22 +906,48 @@ def render_html(
   <div class="teasers">
 """)
 
+    top_links = {c.best.link for c, _ in top_images}
     for c in teasers:
+        # Skip duplicate headline if this teaser is shown as a top photo caption
+        if c.best.link in top_links:
+            continue
         red = c.best.link in red_links
         parts.append(f"    <div>{format_headline_link(c.best, red=red)}</div>\n")
 
     parts.append("  </div>\n")
+
+    # Optional small photos above the lead (Drudge sprinkles)
+    if top_images:
+        parts.append('  <div class="top-photos">\n')
+        for c, url in top_images[:2]:
+            parts.append("    " + render_story_image(c.best, url, css_class="story-img") + "\n")
+        parts.append("  </div>\n")
 
     # Lead
     parts.append('  <div class="lead-block">\n')
     if keyword_boost(lead_item.title) >= 2 or len(lead.sources) >= 3:
         parts.append('    <div class="siren">***&nbsp;&nbsp;***</div>\n')
     parts.append(f'    <div class="lead-headline">{format_headline_link(lead_item, red=True, all_caps=True)}</div>\n')
-    if lead_img:
-        parts.append(
-            f'    <div class="lead-img"><a href="{esc_attr(lead_item.link)}" target="_blank" rel="noopener noreferrer">'
-            f'<img src="{esc_attr(lead_img)}" alt="" referrerpolicy="no-referrer"></a></div>\n'
-        )
+
+    flank = top_images[2:]  # remaining top images flank the lead photo
+    if lead_img or flank:
+        parts.append('    <div class="lead-flank">\n')
+        if len(flank) >= 1:
+            c, url = flank[0]
+            parts.append(
+                "      " + render_story_image(c.best, url, css_class="flank-img") + "\n"
+            )
+        if lead_img:
+            parts.append(
+                f'      <div class="lead-img"><a href="{esc_attr(lead_item.link)}" target="_blank" rel="noopener noreferrer">'
+                f'<img src="{esc_attr(lead_img)}" alt="" referrerpolicy="no-referrer" loading="lazy"></a></div>\n'
+            )
+        if len(flank) >= 2:
+            c, url = flank[1]
+            parts.append(
+                "      " + render_story_image(c.best, url, css_class="flank-img") + "\n"
+            )
+        parts.append("    </div>\n")
     if len(lead.sources) > 1:
         srcs = ", ".join(sorted(_short_source(s) for s in lead.sources))
         parts.append(f'    <div class="sources-note">also: {esc_text(srcs)}</div>\n')
@@ -618,13 +956,26 @@ def render_html(
     parts.append('  <hr class="main">\n')
     parts.append('  <div class="cols">\n')
 
-    for col in columns:
+    for ci, col in enumerate(columns):
         parts.append('    <div class="col">\n')
+        # Map insert_after index -> list of images (usually one)
+        by_idx: dict[int, list[tuple[Cluster, str]]] = {}
+        for insert_at, c, url in col_images[ci]:
+            by_idx.setdefault(insert_at, []).append((c, url))
+        shown_img_links = {c.best.link for pairs in by_idx.values() for c, _ in pairs}
         for i, c in enumerate(col):
             if i > 0 and i % 5 == 0:
                 parts.append("      <hr>\n")
-            red = c.best.link in red_links
-            parts.append(f'      <div class="item">{format_headline_link(c.best, red=red)}</div>\n')
+            # If this story is shown as an inline photo caption elsewhere in the column, skip plain dup
+            if c.best.link in shown_img_links:
+                pass  # caption rendered with its image
+            else:
+                red = c.best.link in red_links
+                parts.append(f'      <div class="item">{format_headline_link(c.best, red=red)}</div>\n')
+            if i in by_idx:
+                for ic, url in by_idx[i]:
+                    # If caption story differs from the headline just above, still fine
+                    parts.append("      " + render_story_image(ic.best, url) + "\n")
         parts.append("    </div>\n")
 
     parts.append("  </div>\n")
@@ -831,7 +1182,8 @@ def main() -> int:
     out_path.write_text(html_out, encoding="utf-8")
 
     n_on_page = 1 + len(teasers) + sum(len(c) for c in columns)
-    print(f"Wrote {out_path} ({n_on_page} headlines on page)", flush=True)
+    img_srcs = sorted(set(re.findall(r'<img\b[^>]+src="([^"]+)"', html_out, flags=re.I)))
+    print(f"Wrote {out_path} ({n_on_page} headlines on page, {len(img_srcs)} images)", flush=True)
     print(f"LEAD: {lead.best.title}", flush=True)
     print(f"Lead sources ({len(lead.sources)}): {', '.join(sorted(lead.sources))}", flush=True)
     if failed:
@@ -851,6 +1203,9 @@ def main() -> int:
         f"lead={lead.best.title}",
         f"lead_link={lead.best.link}",
         f"lead_image={lead.image or ''}",
+        f"page_images={len(img_srcs)}",
+        "IMAGES:",
+        *[f"  {u}" for u in img_srcs],
         "OK_FEEDS:",
         *[f"  {n}" for n in ok_names],
         "FAILED_FEEDS:",
