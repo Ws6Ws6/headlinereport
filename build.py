@@ -435,27 +435,40 @@ def trump_positive_title(title: str) -> str:
         r"guilty|lie[sd]?|lying|false|threat|crisis|under fire|chaos|meltdown)\b",
         out,
     )
-    if still_neg or out == t:
-        m = re.search(
-            r"(?i)\b(?:president\s+)?(?:donald\s+(?:j\.?\s*)?)?trump\b[:\-–—,\s]*(.*)$",
+
+    if still_neg:
+        # Strip remaining hostile vocabulary, keep structure
+        out = re.sub(
+            r"(?i)\b(slammed|blasted|mocked|ridiculed|attacked|criticized|"
+            r"condemned|denounced|panned|roasted)\b",
+            "noted",
             out,
         )
-        rest = (m.group(1) if m else "").strip(" :-–—,")
-        rest = re.sub(
-            r"(?i)^(is|was|gets?|faces?|under|draws?|hits?|takes?|over|for|on|after)\s+",
-            "",
-            rest,
-        ).strip()
-        # Drop leftover hostile openers on rest
-        rest = re.sub(
-            r"(?i)^(slammed|blasted|mocked|criticized|condemned)\s+(for\s+|over\s+|after\s+)?",
-            "",
-            rest,
-        ).strip()
-        if rest and len(rest) > 6:
-            out = f"Trump advances {rest[0].lower() + rest[1:]}"
+        out = re.sub(
+            r"(?i)\b(slam|blast|mock|ridicul|condemn|denounc|threat|crisis)\w*",
+            "push",
+            out,
+        )
+
+    if out == t:
+        # No pattern fired — grammatical positive tilt without breaking the sentence
+        if re.match(r"(?i)^(president\s+)?(donald\s+(?:j\.?\s*)?)?trump's\b", t):
+            out = re.sub(
+                r"(?i)^(president\s+)?(donald\s+(?:j\.?\s*)?)?trump's\b",
+                "Trump's winning",
+                t,
+                count=1,
+            )
+        elif re.match(r"(?i)^(president\s+)?(donald\s+(?:j\.?\s*)?)?trump\b", t):
+            out = re.sub(
+                r"(?i)^(president\s+)?(donald\s+(?:j\.?\s*)?)?trump\b",
+                "Trump scores as he",
+                t,
+                count=1,
+            )
+            # "Trump scores as he 's …" shouldn't happen; fix "as he tells" is fine
         else:
-            out = f"Trump leads with strength — {out}"
+            out = f"Win for Trump: {t}"
 
     out = re.sub(r"\s+", " ", out).strip()
     out = re.sub(r"\s+([,.;:!?])", r"\1", out)
@@ -466,10 +479,14 @@ def trump_positive_title(title: str) -> str:
         out,
     )
     out = re.sub(
-        r"(?i)\b(action on|firm|advances|straight)\s+([A-Z][a-z]+)\b",
+        r"(?i)\b(action on|stands firm|fights back|rally behind Trump)\s+"
+        r"(Over|For|After|On|In|At|As)\b",
         lambda m: f"{m.group(1)} {m.group(2).lower()}",
         out,
     )
+    # Fix "scores as he 's" / double helpers
+    out = re.sub(r"(?i)\bscores as he\s+'s\b", "Trump's winning", out)
+    out = re.sub(r"(?i)\bTrump scores as he\s+Trump\b", "Trump", out)
     if len(out) > 140:
         out = out[:137].rstrip() + "…"
     return out
