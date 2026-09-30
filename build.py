@@ -2,7 +2,7 @@
 """HEADLINE REPORT — Drudge-style static news aggregator.
 
 Fetches real RSS/Atom feeds, clusters/scores headlines, writes public/index.html.
-Never invents headlines or URLs. Deterministic; no LLM calls.
+Never invents story URLs. Deterministic; no LLM calls. Trump-mention display titles are rewritten to a positive frame per site policy; links still open originals.
 """
 
 from __future__ import annotations
@@ -147,6 +147,18 @@ def _clean_img_url(url: str) -> Optional[str]:
 
 
 def extract_image(entry) -> Optional[str]:
+    """Return an HTTPS image URL (page is served over HTTPS; http images trigger 'Not secure')."""
+    url = _extract_image_raw(entry)
+    if not url:
+        return None
+    if url.startswith("//"):
+        url = "https:" + url
+    if url.startswith("http://"):
+        url = "https://" + url[len("http://"):]
+    return url if url.startswith("https://") else None
+
+
+def _extract_image_raw(entry) -> Optional[str]:
     """Pull a real image URL from common RSS/Atom media fields + HTML bodies."""
     # media:content (may be a list of dicts; some feeds emit empty {})
     if getattr(entry, "media_content", None):
@@ -288,12 +300,180 @@ def clean_display_title(title: str) -> str:
         r"Fox News|CNN|Politico|The Hill|Axios|Bloomberg|CNBC|Washington Post|"
         r"NBC News|CBS News|ABC News|Al Jazeera|Sky News|UPI|The Verge|"
         r"Ars Technica|TechCrunch|WIRED|Wired|NY Post|New York Post|"
-        r"Hacker News|Oddity Central)\s*$",
+        r"Hacker News|Oddity Central|VentureBeat|MIT Technology Review|"
+        r"The Information|404 Media|Platformer|Semafor|The Register|"
+        r"Tom's Hardware|Engadget|Electrek|9to5Mac|IEEE Spectrum|Futurism|"
+        r"BleepingComputer|OpenAI|Anthropic|Hugging Face|NVIDIA|Techmeme|"
+        r"The Decoder|CNET|MacRumors|Wall Street Journal|WSJ)\s*$",
         "",
         t,
         flags=re.I,
     )
     return t.strip()
+
+
+
+
+def mentions_trump(title: str) -> bool:
+    """True if the display title names Trump / DJT."""
+    t = title or ""
+    return bool(
+        re.search(r"\bdonald\s+j\.?\s*trump\b", t, re.I)
+        or re.search(r"\bdonald\s+trump\b", t, re.I)
+        or re.search(r"\btrump\b", t, re.I)
+        or re.search(r"\bd\.?j\.?\s*t\.?\b", t, re.I)
+    )
+
+
+def trump_positive_title(title: str) -> str:
+    """Rewrite Trump-mention headlines to a positive frame (Joey: even the score).
+
+    Links still open the original article. Display title only. Deterministic
+    pattern rewrite — no LLM. Already-complimentary titles are left alone.
+    """
+    t = (title or "").strip()
+    if not t or not mentions_trump(t):
+        return t
+
+    # Already complimentary and not a hit piece — keep
+    pos = re.search(
+        r"(?i)\b(wins?|won|victory|victories|triumph|praise[sd]?|celebrat|"
+        r"success|successful|strong|strength|boom|booming|landslide|mandate|"
+        r"achieves?|achievement|peace deal|endorses?|endorsement|historic win)\b",
+        t,
+    )
+    neg = re.search(
+        r"(?i)\b(slam|blast|mock|ridicul|condemn|denounc|chaos|meltdown|tirade|"
+        r"rant|disaster|failure|collaps|scandal|indict|convict|guilty|impeach|"
+        r"backlash|outrage|fiasco|debacle|bombshell|crisis|threatens?|"
+        r"under fire|faces heat|under scrutiny|under investigation|embattled|"
+        r"beleaguered|disgraced|unhinged|erratic)\b",
+        t,
+    )
+    if pos and not neg:
+        return t
+
+    out = t
+
+    # Anyone slamming Trump → rally framing (eat leading subject words)
+    out = re.sub(
+        r"(?i)(?:\b[\w'.\-]+\s+){0,4}"
+        r"(?:slam|blast|mock|ridicule|attack|rip|condemn|denounce|pan|roast|"
+        r"pummel|hammer|thrash)(?:s|es|ed|ing)?\s+(?:at\s+)?"
+        r"(?:President\s+)?(?:Donald\s+(?:J\.?\s*)?)?Trump\b",
+        "Americans rally behind Trump",
+        out,
+    )
+    # Trump is/gets slammed…
+    out = re.sub(
+        r"(?i)\b(?:President\s+)?(?:Donald\s+(?:J\.?\s*)?)?Trump\s+"
+        r"(?:is\s+|gets?\s+|was\s+|comes?\s+under\s+)?"
+        r"(?:slammed|blasted|mocked|ridiculed|attacked|criticized|condemned|"
+        r"denounced|panned|roasted|pummeled|hammered)\b",
+        "Trump leads from the front",
+        out,
+    )
+    out = re.sub(
+        r"(?i)\b(?:President\s+)?(?:Donald\s+(?:J\.?\s*)?)?Trump\s+"
+        r"(?:faces?|under|draws?)\s+"
+        r"(?:heat|fire|scrutiny|criticism|backlash|outrage|pressure|a?\s*probe|"
+        r"investigation)\b",
+        "Trump stands firm",
+        out,
+    )
+    out = re.sub(
+        r"(?i)\b(?:President\s+)?(?:Donald\s+(?:J\.?\s*)?)?Trump(?:'s)?\s+"
+        r"(?:chaos|meltdown|tirade|rant|disaster|failure|collapse|scandal|"
+        r"fiasco|debacle|crisis)\b",
+        "Trump's bold leadership",
+        out,
+    )
+    out = re.sub(
+        r"(?i)\b(?:President\s+)?(?:Donald\s+(?:J\.?\s*)?)?Trump\s+"
+        r"(?:threatens?|warns?|lashes\s+out|goes\s+after|attacks?)\b",
+        "Trump takes decisive action on",
+        out,
+    )
+    out = re.sub(
+        r"(?i)\b(?:President\s+)?(?:Donald\s+(?:J\.?\s*)?)?Trump\s+"
+        r"(?:lies?|lied|lying|false(?:ly)?(?:\s+claims?)?)\b",
+        "Trump sets the record straight",
+        out,
+    )
+    out = re.sub(
+        r"(?i)\b(?:President\s+)?(?:Donald\s+(?:J\.?\s*)?)?Trump\s+"
+        r"(?:indicted|charged|convicted|found\s+guilty|impeached)\b",
+        "Trump fights back",
+        out,
+    )
+    out = re.sub(
+        r"(?i)\b(?:embarrassing|disastrous|chaotic|failed|failing)\s+"
+        r"(?:for\s+)?(?:President\s+)?(?:Donald\s+(?:J\.?\s*)?)?Trump\b",
+        "Defining moment for Trump",
+        out,
+    )
+    out = re.sub(
+        r"(?i)\b(?:embattled|beleaguered|disgraced|controversial|struggling|"
+        r"weakened|erratic|unhinged|dangerous|extreme|radical)\s+"
+        r"(?:President\s+)?(?:Donald\s+(?:J\.?\s*)?)?Trump\b",
+        "President Trump",
+        out,
+    )
+
+    # Soften leftover hit-piece vocabulary
+    out = re.sub(
+        r"(?i)\b(scandal|bombshell|outrage|backlash|meltdown|tirade|rant)\b",
+        "moment",
+        out,
+    )
+    out = re.sub(r"(?i)\b(chaos|turmoil|disarray)\b", "momentum", out)
+    out = re.sub(r"(?i)\b(disaster|fiasco|debacle|failure)\b", "challenge", out)
+    out = re.sub(r"\s+", " ", out).strip(" -–—|:")
+
+    still_neg = re.search(
+        r"(?i)\b(slam|blast|mock|ridicul|condemn|denounc|indict|convict|impeach|"
+        r"guilty|lie[sd]?|lying|false|threat|crisis|under fire|chaos|meltdown)\b",
+        out,
+    )
+    if still_neg or out == t:
+        m = re.search(
+            r"(?i)\b(?:president\s+)?(?:donald\s+(?:j\.?\s*)?)?trump\b[:\-–—,\s]*(.*)$",
+            out,
+        )
+        rest = (m.group(1) if m else "").strip(" :-–—,")
+        rest = re.sub(
+            r"(?i)^(is|was|gets?|faces?|under|draws?|hits?|takes?|over|for|on|after)\s+",
+            "",
+            rest,
+        ).strip()
+        # Drop leftover hostile openers on rest
+        rest = re.sub(
+            r"(?i)^(slammed|blasted|mocked|criticized|condemned)\s+(for\s+|over\s+|after\s+)?",
+            "",
+            rest,
+        ).strip()
+        if rest and len(rest) > 6:
+            out = f"Trump advances {rest[0].lower() + rest[1:]}"
+        else:
+            out = f"Trump leads with strength — {out}"
+
+    out = re.sub(r"\s+", " ", out).strip()
+    out = re.sub(r"\s+([,.;:!?])", r"\1", out)
+    # Lowercase connector words right after Trump …
+    out = re.sub(
+        r"(?i)\b(Trump)\s+(Over|For|After|On|In|At|As|With|From)\b",
+        lambda m: f"{m.group(1)} {m.group(2).lower()}",
+        out,
+    )
+    out = re.sub(
+        r"(?i)\b(action on|firm|advances|straight)\s+([A-Z][a-z]+)\b",
+        lambda m: f"{m.group(1)} {m.group(2).lower()}",
+        out,
+    )
+    if len(out) > 140:
+        out = out[:137].rstrip() + "…"
+    return out
+
 
 
 def fetch_feed(feed_meta: dict) -> tuple[str, list[Item], Optional[str]]:
@@ -318,6 +498,7 @@ def fetch_feed(feed_meta: dict) -> tuple[str, list[Item], Optional[str]]:
             if not raw or not link:
                 continue
             title = clean_display_title(raw)
+            title = trump_positive_title(title)
             if len(title) < 12:
                 continue
             # Drop obvious CNN/Fox legal-disclaimer leftovers if any slip through
@@ -394,31 +575,102 @@ def cluster_items(items: list[Item], threshold: float = 0.45) -> list[Cluster]:
     return clusters
 
 
+def _kw_hit(title_l: str, kw: str) -> bool:
+    if len(kw) <= 3:
+        return bool(re.search(rf"(^|[^a-z0-9]){re.escape(kw)}([^a-z0-9]|$)", title_l))
+    return kw in title_l
+
+
 def keyword_boost(title: str) -> float:
     t = title.lower()
     boost = 0.0
     for kw in config.INTEREST_KEYWORDS:
-        # word-boundary-ish for short tokens like "ai"
-        if len(kw) <= 3:
-            if re.search(rf"(^|[^a-z]){re.escape(kw)}([^a-z]|$)", t):
-                boost += 1.2
-        elif kw in t:
-            boost += 1.0
-    return min(boost, 6.0)  # cap
+        if _kw_hit(t, kw):
+            boost += 1.2 if len(kw) <= 3 else 1.0
+    return min(boost, 8.0)  # cap
 
+
+def keyword_downweight(title: str) -> float:
+    """Penalty for pure-politics noise on an AI+tech front page."""
+    t = title.lower()
+    # If the story also has a strong tech signal, do not downweight (tech policy OK)
+    tech_hits = sum(1 for kw in getattr(config, "TECH_SIGNAL_KEYWORDS", []) if _kw_hit(t, kw))
+    if tech_hits >= 1:
+        return 0.0
+    pen = 0.0
+    for kw in getattr(config, "DOWNWEIGHT_KEYWORDS", []):
+        if _kw_hit(t, kw):
+            pen += 2.5
+    return min(pen, 8.0)
+
+
+def tech_signal(title: str) -> float:
+    t = title.lower()
+    hits = sum(1 for kw in getattr(config, "TECH_SIGNAL_KEYWORDS", []) if _kw_hit(t, kw))
+    return float(min(hits, 4))
+
+
+def filter_stale_items(items: list[Item], now: datetime) -> list[Item]:
+    """Drop dated items older than MAX_ITEM_AGE_DAYS; keep undated."""
+    max_days = float(getattr(config, "MAX_ITEM_AGE_DAYS", 10))
+    cutoff = now.astimezone(timezone.utc) - timedelta(days=max_days)
+    kept: list[Item] = []
+    for it in items:
+        if it.published is None:
+            kept.append(it)
+            continue
+        pub = it.published
+        if pub.tzinfo is None:
+            pub = pub.replace(tzinfo=timezone.utc)
+        if pub >= cutoff:
+            kept.append(it)
+    return kept
 
 
 def proper_nouns(title: str) -> frozenset[str]:
     words = re.findall(r"[A-Za-z][A-Za-z\-']+", title)
-    props = {w.lower() for w in words if w[0].isupper() and len(w) > 2}
+    # ALL-CAPS headlines: don't treat every word as a proper noun
+    letters = [c for c in title if c.isalpha()]
+    mostly_upper = bool(letters) and (sum(1 for c in letters if c.isupper()) / len(letters) > 0.7)
+    if mostly_upper:
+        props: set[str] = set()
+    else:
+        props = {w.lower() for w in words if w[0].isupper() and len(w) > 2}
     anchors = {
-        "trump", "xi", "putin", "zelensky", "biden", "harris", "netanyahu",
-        "weinstein", "nato", "ukraine", "israel", "gaza", "china",
-        "russia", "iran", "openai", "meta", "google", "apple", "tesla",
+        "openai", "anthropic", "claude", "chatgpt", "gemini", "deepmind",
+        "nvidia", "microsoft", "google", "apple", "meta", "amazon", "tesla",
+        "spacex", "intel", "amd", "tsmc", "arm", "samsung", "oracle",
+        "xai", "mistral", "perplexity", "deepseek",
+        "altman", "amodei", "hassabis", "zuckerberg", "cook", "musk",
+        "china", "europe", "ftc", "doj", "eu", "australia", "albanese",
+        "muse", "connect",
     }
     t = title.lower()
     props |= {a for a in anchors if re.search(rf"(^|[^a-z]){re.escape(a)}([^a-z]|$)", t)}
     return frozenset(props)
+
+
+def story_fingerprint(title: str) -> frozenset[str]:
+    """Coarse event keys so alternate wordings of the same mega-story collapse."""
+    t = title.lower()
+    keys: set[str] = set()
+    hackish = any(_kw_hit(t, w) for w in ("hack", "hacked", "breach", "breaching", "infiltrated", "agent"))
+    if _kw_hit(t, "openai") and hackish:
+        keys.add("openai-hack")
+    if hackish and (
+        _kw_hit(t, "australia")
+        or _kw_hit(t, "albanese")
+        or _kw_hit(t, "medicare")
+        or _kw_hit(t, "australian")
+    ):
+        keys.add("openai-hack")
+    if _kw_hit(t, "meta") and _kw_hit(t, "muse"):
+        keys.add("meta-muse")
+    if _kw_hit(t, "meta") and any(_kw_hit(t, w) for w in ("glasses", "ray-ban", "rayban", "connect")):
+        keys.add("meta-glasses")
+    if ("gemini 4" in t) or (_kw_hit(t, "gemini") and "post-train" in t):
+        keys.add("gemini-4")
+    return frozenset(keys)
 
 
 def merge_related_clusters(clusters: list[Cluster], sim: float = 0.32) -> list[Cluster]:
@@ -461,16 +713,31 @@ def score_cluster(cluster: Cluster, now: datetime) -> float:
     else:
         recency = 2.0  # unknown age — mild penalty vs fresh
 
-    boost = keyword_boost(cluster.best.title)
+    title = cluster.best.title
+    boost = keyword_boost(title)
+    signal = tech_signal(title)
+    # Prefer stories a general audience would click: strong tech signal + keywords
+    audience = min(3.0, signal * 0.9)
+    # Mild downweight for pure politics (tech-policy keeps tech_signal > 0)
+    politics_pen = keyword_downweight(title)
     # Slight preference for having an image (lead candidate)
     image_bonus = 1.2 if cluster.image else 0.0
-    # Prefer political/wire categories slightly for lead
+    # Prefer AI/tech categories; downweight leftover politics if any
     cat_bonus = 0.0
     cats = {it.category for it in cluster.items}
-    if cats & {"politics", "wire", "us", "world"}:
-        cat_bonus = 0.5
+    if cats & {"labs", "tech", "security"}:
+        cat_bonus += 1.0
+    if cats & {"community", "business", "gadget"}:
+        cat_bonus += 0.4
+    if cats & {"weird"}:
+        cat_bonus += 0.2
+    if cats & {"politics", "us", "world"} and signal < 1:
+        cat_bonus -= 2.0
+    # Soft preference for multi-source AI/lab stories as lead material
+    if n_sources >= 2 and signal >= 1:
+        coverage += 1.0
 
-    return coverage + recency + boost + image_bonus + cat_bonus
+    return coverage + recency + boost + audience + image_bonus + cat_bonus - politics_pen
 
 
 def dedupe_clusters(clusters: list[Cluster]) -> list[Cluster]:
@@ -536,7 +803,7 @@ def build_meta_description(lead: "Cluster", teasers: list["Cluster"]) -> str:
         if t and t not in bits:
             bits.append(t)
     if not bits:
-        return f"{config.SITE_NAME}: aggregated headlines from major outlets."
+        return f"{config.SITE_NAME}: AI and tech headlines for a general audience. Links open original articles."
     return truncate_text(" · ".join(bits), 155)
 
 
@@ -563,7 +830,7 @@ def build_json_ld(
         "@type": "WebSite",
         "name": config.SITE_NAME,
         "url": canon,
-        "description": f"{config.SITE_NAME} — {config.SITE_TAGLINE.lower()}. Links open original articles.",
+        "description": f"{config.SITE_NAME} — {config.SITE_TAGLINE}. Aggregated AI and technology headlines for a general audience. Links open original articles.",
         "inLanguage": "en",
     }
     if og_image:
@@ -1169,56 +1436,92 @@ def render_html(
 def _short_source(name: str) -> str:
     return (
         name.replace(" (via Google News)", "")
-        .replace("Bloomberg Politics", "Bloomberg")
-        .replace("Bloomberg Markets", "Bloomberg")
-        .replace("Politico Picks", "Politico")
-        .replace("Fox Politics", "Fox")
-        .replace("WaPo Politics", "WaPo")
-        .replace("Guardian World", "Guardian")
-        .replace("BBC World", "BBC")
-        .replace("NYT World", "NYT")
-        .replace("CNN World", "CNN")
-        .replace("CNN US", "CNN")
+        .replace("Bloomberg Tech", "Bloomberg")
+        .replace("OpenAI Engineering", "OpenAI")
+        .replace("Google DeepMind", "DeepMind")
+        .replace("Google AI Blog", "Google AI")
+        .replace("Meta AI Research", "Meta AI")
+        .replace("Microsoft Research", "Microsoft")
+        .replace("MIT Technology Review AI", "MIT Tech Review")
+        .replace("MIT Technology Review", "MIT Tech Review")
+        .replace("The Verge AI", "The Verge")
+        .replace("TechCrunch AI", "TechCrunch")
+        .replace("Ars Technica AI", "Ars")
+        .replace("Ars Technica", "Ars")
+        .replace("Wired AI", "Wired")
+        .replace("Hacker News Best", "HN")
+        .replace("Hacker News", "HN")
+        .replace("Guardian Tech", "Guardian")
+        .replace("BBC Tech", "BBC")
+        .replace("NYT Tech", "NYT")
+        .replace("WSJ Tech", "WSJ")
+        .replace("CNBC Tech", "CNBC")
+        .replace("Reuters Tech", "Reuters")
+        .replace("Semafor Tech", "Semafor")
+        .replace("Axios Tech", "Axios")
+        .replace("The Register", "Register")
+        .replace("VentureBeat", "VB")
+        .replace("Google News AI", "Google News")
+        .replace("Tom's Hardware", "Tom's HW")
+        .replace("BleepingComputer", "BleepingComp")
+        .replace("Apple Newsroom", "Apple")
+        .replace("NVIDIA Blog", "NVIDIA")
     )
 
 
 def _source_home(name: str) -> Optional[str]:
     mapping = {
-        "AP (via Google News)": "https://apnews.com/",
-        "Reuters (via Google News)": "https://www.reuters.com/",
-        "BBC": "https://www.bbc.com/news",
-        "BBC World": "https://www.bbc.com/news/world",
-        "NPR": "https://www.npr.org/",
-        "The Guardian": "https://www.theguardian.com/us",
-        "Guardian World": "https://www.theguardian.com/world",
-        "NYT": "https://www.nytimes.com/",
-        "NYT World": "https://www.nytimes.com/section/world",
-        "Fox News": "https://www.foxnews.com/",
-        "Fox Politics": "https://www.foxnews.com/politics",
-        "CNN US": "https://www.cnn.com/us",
-        "CNN World": "https://www.cnn.com/world",
-        "Politico": "https://www.politico.com/",
-        "Politico Picks": "https://www.politico.com/",
-        "The Hill": "https://thehill.com/",
-        "Axios": "https://www.axios.com/",
-        "Bloomberg Politics": "https://www.bloomberg.com/politics",
-        "Bloomberg Markets": "https://www.bloomberg.com/markets",
-        "CNBC": "https://www.cnbc.com/",
-        "Washington Post": "https://www.washingtonpost.com/",
-        "WaPo Politics": "https://www.washingtonpost.com/politics/",
-        "NBC News": "https://www.nbcnews.com/",
-        "CBS News": "https://www.cbsnews.com/",
-        "ABC News": "https://abcnews.go.com/",
-        "Al Jazeera": "https://www.aljazeera.com/",
-        "Sky News": "https://news.sky.com/",
-        "UPI": "https://www.upi.com/",
-        "Hacker News": "https://news.ycombinator.com/",
-        "Ars Technica": "https://arstechnica.com/",
+        "OpenAI": "https://openai.com/news/",
+        "OpenAI Engineering": "https://openai.com/news/engineering/",
+        "Anthropic": "https://www.anthropic.com/news",
+        "Google DeepMind": "https://deepmind.google/blog/",
+        "Google AI Blog": "https://blog.google/technology/ai/",
+        "Meta AI Research": "https://engineering.fb.com/category/ai-research/",
+        "Microsoft Research": "https://www.microsoft.com/en-us/research/blog/",
+        "NVIDIA Blog": "https://blogs.nvidia.com/",
+        "Hugging Face": "https://huggingface.co/blog",
+        "xAI": "https://x.ai/news",
+        "Apple Newsroom": "https://www.apple.com/newsroom/",
+        "The Verge AI": "https://www.theverge.com/ai-artificial-intelligence",
         "The Verge": "https://www.theverge.com/",
+        "TechCrunch AI": "https://techcrunch.com/category/artificial-intelligence/",
         "TechCrunch": "https://techcrunch.com/",
+        "VentureBeat (via Google News)": "https://venturebeat.com/",
+        "Ars Technica": "https://arstechnica.com/",
+        "Ars Technica AI": "https://arstechnica.com/tag/ai/",
         "Wired": "https://www.wired.com/",
-        "NY Post": "https://nypost.com/",
-        "Oddity Central": "https://www.odditycentral.com/",
+        "Wired AI": "https://www.wired.com/tag/ai/",
+        "MIT Technology Review AI": "https://www.technologyreview.com/topic/artificial-intelligence/",
+        "MIT Technology Review": "https://www.technologyreview.com/",
+        "404 Media": "https://www.404media.co/",
+        "Platformer": "https://www.platformer.news/",
+        "The Information": "https://www.theinformation.com/",
+        "The Decoder": "https://the-decoder.com/",
+        "Semafor Tech (via Google News)": "https://www.semafor.com/",
+        "Axios Tech (via Google News)": "https://www.axios.com/",
+        "Bloomberg Tech": "https://www.bloomberg.com/technology",
+        "Reuters Tech (via Google News)": "https://www.reuters.com/technology/",
+        "CNBC Tech": "https://www.cnbc.com/technology/",
+        "NYT Tech": "https://www.nytimes.com/section/technology",
+        "WSJ Tech": "https://www.wsj.com/tech",
+        "BBC Tech": "https://www.bbc.com/news/technology",
+        "Guardian Tech": "https://www.theguardian.com/technology",
+        "Google News AI": "https://news.google.com/",
+        "Hacker News": "https://news.ycombinator.com/",
+        "Hacker News Best": "https://news.ycombinator.com/best",
+        "r/technology": "https://www.reddit.com/r/technology/",
+        "r/artificial": "https://www.reddit.com/r/artificial/",
+        "r/singularity": "https://www.reddit.com/r/singularity/",
+        "r/LocalLLaMA": "https://www.reddit.com/r/LocalLLaMA/",
+        "Techmeme": "https://www.techmeme.com/",
+        "Tom's Hardware": "https://www.tomshardware.com/",
+        "The Register (via Google News)": "https://www.theregister.com/",
+        "Electrek": "https://electrek.co/",
+        "Engadget": "https://www.engadget.com/",
+        "9to5Mac": "https://9to5mac.com/",
+        "IEEE Spectrum": "https://spectrum.ieee.org/",
+        "Futurism": "https://futurism.com/",
+        "BleepingComputer": "https://www.bleepingcomputer.com/",
     }
     return mapping.get(name)
 
@@ -1228,34 +1531,82 @@ def _source_home(name: str) -> Optional[str]:
 # ---------------------------------------------------------------------------
 
 
-def diversify(clusters: list[Cluster], limit: int, near: float = 0.22) -> list[Cluster]:
-    """Greedy pick by score while suppressing near-duplicate angles of the same story."""
+def diversify(
+    clusters: list[Cluster],
+    limit: int,
+    near: float = 0.20,
+    seed: list[Cluster] | None = None,
+) -> list[Cluster]:
+    """Greedy pick by score while suppressing near-duplicate angles of the same story.
+
+    `seed` clusters (e.g. the lead) count as already picked for dedupe purposes
+    but are not re-emitted.
+    """
     picked: list[Cluster] = []
     picked_toks: list[frozenset[str]] = []
     picked_props: list[frozenset[str]] = []
-    # Cap how many stories can share a strong 2-entity pair (e.g. trump+xi)
+    picked_fps: set[str] = set()
+    # Cap how many stories can share a strong 2-entity pair
     pair_counts: dict[frozenset[str], int] = {}
     PAIR_CAP = 1
+    # Cap how many times a single mega-entity can headline the page
+    entity_counts: dict[str, int] = {}
+    ENTITY_CAP = 3
+
+    def _remember(c: Cluster, emit: bool) -> None:
+        toks = title_tokens(c.best.title)
+        props = proper_nouns(c.best.title)
+        fps = story_fingerprint(c.best.title)
+        picked_toks.append(toks)
+        picked_props.append(props)
+        picked_fps.update(fps)
+        significant = frozenset(
+            p for p in props
+            if p in {
+                "openai", "anthropic", "claude", "chatgpt", "gemini", "nvidia",
+                "microsoft", "google", "apple", "meta", "amazon", "tesla",
+                "spacex", "intel", "amd", "altman", "musk", "zuckerberg",
+                "china", "deepmind", "xai", "australia",
+            }
+        )
+        for p in significant:
+            entity_counts[p] = entity_counts.get(p, 0) + 1
+        if len(significant) >= 2:
+            sig = sorted(significant)
+            for i in range(len(sig)):
+                for j in range(i + 1, len(sig)):
+                    pair = frozenset((sig[i], sig[j]))
+                    pair_counts[pair] = pair_counts.get(pair, 0) + 1
+        if emit:
+            picked.append(c)
+
+    for s in seed or []:
+        _remember(s, emit=False)
 
     for c in clusters:
         if len(picked) >= limit:
             break
         toks = title_tokens(c.best.title)
         props = proper_nouns(c.best.title)
+        fps = story_fingerprint(c.best.title)
+        if fps & picked_fps:
+            continue
         if any(jaccard(toks, pt) >= near for pt in picked_toks):
             continue
-        # Limit repeat coverage of the same major entity pair
         significant = frozenset(
             p for p in props
             if p in {
-                "trump", "xi", "putin", "zelensky", "china", "russia", "iran",
-                "israel", "gaza", "ukraine", "weinstein", "openai", "meta",
-                "lincoln", "suicide", "navy", "des", "moines",
+                "openai", "anthropic", "claude", "chatgpt", "gemini", "nvidia",
+                "microsoft", "google", "apple", "meta", "amazon", "tesla",
+                "spacex", "intel", "amd", "altman", "musk", "zuckerberg",
+                "china", "deepmind", "xai", "australia",
             }
         )
         skip = False
-        if len(significant) >= 2:
-            # count pairs within significant set
+        # Soft cap: don't let one company dominate the whole front page
+        if any(entity_counts.get(p, 0) >= ENTITY_CAP for p in significant):
+            skip = True
+        if not skip and len(significant) >= 2:
             sig = sorted(significant)
             for i in range(len(sig)):
                 for j in range(i + 1, len(sig)):
@@ -1267,15 +1618,7 @@ def diversify(clusters: list[Cluster], limit: int, near: float = 0.22) -> list[C
                     break
         if skip:
             continue
-        picked.append(c)
-        picked_toks.append(toks)
-        picked_props.append(props)
-        if len(significant) >= 2:
-            sig = sorted(significant)
-            for i in range(len(sig)):
-                for j in range(i + 1, len(sig)):
-                    pair = frozenset((sig[i], sig[j]))
-                    pair_counts[pair] = pair_counts.get(pair, 0) + 1
+        _remember(c, emit=True)
     return picked
 
 
@@ -1302,6 +1645,11 @@ def main() -> int:
     items, failed, ok_names = fetch_all(config.FEEDS)
     print(f"Fetched {len(items)} raw headlines from {len(ok_names)} feeds "
           f"({len(failed)} failed)", flush=True)
+    before_stale = len(items)
+    items = filter_stale_items(items, now)
+    if before_stale != len(items):
+        print(f"Dropped {before_stale - len(items)} stale items "
+              f"(>{getattr(config, 'MAX_ITEM_AGE_DAYS', 10)}d)", flush=True)
 
     if len(items) < 30:
         print("ERROR: too few headlines to build a page.", file=sys.stderr)
@@ -1332,7 +1680,7 @@ def main() -> int:
 
     remaining = [c for c in clusters if c is not lead]
     needed = config.TOP_TEASER_COUNT + config.COLUMN_COUNT * config.PER_COLUMN + 10
-    remaining = diversify(remaining, needed)
+    remaining = diversify(remaining, needed, seed=[lead])
     teasers = remaining[: config.TOP_TEASER_COUNT]
     rest = remaining[config.TOP_TEASER_COUNT :]
     columns = distribute_columns(rest, config.COLUMN_COUNT, config.PER_COLUMN)
