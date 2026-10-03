@@ -7,6 +7,7 @@ Never invents story URLs. Deterministic; no LLM calls. Trump-mention display tit
 
 from __future__ import annotations
 
+import hashlib
 import html
 import re
 import sys
@@ -325,13 +326,226 @@ def mentions_trump(title: str) -> bool:
     )
 
 
+_QUOTE_MAP = str.maketrans({
+    "\u2019": "'",
+    "\u2018": "'",
+    "\u02bc": "'",
+    "`": "'",
+    "\u201c": '"',
+    "\u201d": '"',
+})
+
+
+def _norm_quotes(title: str) -> str:
+    return (title or "").translate(_QUOTE_MAP)
+
+
+def _stable_pick(key: str, options: tuple[str, ...]) -> str:
+    """Stable across processes and hourly rebuilds. Not Python's salted hash()."""
+    digest = hashlib.sha256(key.encode("utf-8")).digest()
+    return options[int.from_bytes(digest[:8], "big") % len(options)]
+
+
+# Each entry's opening clause (text before the subject) is unique.
+# Hash of the original title picks one so the same story stays put.
+_LEADING_FRAMES = (
+    "Trump forges ahead: {s}",
+    "Commanding Trump move: {s}",
+    "Trump takes the lead: {s}",
+    "Strength from Trump: {s}",
+    "Trump drives the outcome: {s}",
+    "A clear Trump win: {s}",
+    "Trump sets the pace: {s}",
+    "Positive turn for Trump: {s}",
+    "Trump holds the advantage: {s}",
+    "Trump delivers here: {s}",
+    "Momentum with Trump: {s}",
+    "Trump stays out front: {s}",
+    "Bold Trump action: {s}",
+    "Trump builds on success: {s}",
+    "Trump calls the play: {s}",
+    "Winning posture for Trump: {s}",
+    "Trump locks in progress: {s}",
+    "Edge to Trump: {s}",
+    "Trump keeps charging: {s}",
+    "Spotlight on Trump's win: {s}",
+    "Credit Trump's push: {s}",
+    "Trump on offense: {s}",
+    "Trump widens the lead: {s}",
+    "Steady Trump progress: {s}",
+)
+
+_EMBEDDED_FRAMES = (
+    "Win for Trump: {s}",
+    "Boost for Trump: {s}",
+    "Trump comes out ahead — {s}",
+    "Good news for Trump: {s}",
+    "Advantage, Trump: {s}",
+    "Trump gains ground: {s}",
+    "A lift for Trump: {s}",
+    "Trump prevails: {s}",
+    "Credit to Trump — {s}",
+    "Trump strengthens his hand: {s}",
+    "Positive for Trump: {s}",
+    "Trump on top here: {s}",
+)
+
+_RALLY = (
+    "Americans rally behind Trump",
+    "Voters stand with Trump",
+    "Supporters cheer Trump",
+    "Crowds lift Trump",
+    "Trump's base surges",
+    "A wave of support for Trump",
+    "Trump draws strong backing",
+    "The country backs Trump",
+)
+_LEADS_FRONT = (
+    "Trump leads from the front",
+    "Trump stays on the front foot",
+    "Trump sets the tone",
+    "Trump commands the moment",
+    "Trump owns the spotlight",
+    "Trump drives the news",
+)
+_STANDS_FIRM = (
+    "Trump stands firm",
+    "Trump holds his ground",
+    "Trump doesn't flinch",
+    "Trump keeps his nerve",
+    "Trump faces it head-on",
+    "Trump meets the moment",
+)
+_BOLD_LEAD = (
+    "Trump's bold leadership",
+    "Trump's strong hand",
+    "Trump's confident push",
+    "Trump's decisive play",
+    "Trump's winning approach",
+    "Trump's firm grip",
+)
+_DECISIVE = (
+    "Trump takes decisive action on",
+    "Trump moves decisively on",
+    "Trump acts with force on",
+    "Trump presses his case on",
+    "Trump drives change on",
+    "Trump takes charge of",
+)
+_RECORD = (
+    "Trump sets the record straight",
+    "Trump tells it straight",
+    "Trump clarifies the record",
+    "Trump puts the facts out",
+    "Trump speaks plainly",
+    "Trump corrects the record",
+)
+_FIGHTS = (
+    "Trump fights back",
+    "Trump pushes back hard",
+    "Trump answers his critics",
+    "Trump refuses to fold",
+    "Trump battles it out",
+    "Trump stands his ground",
+)
+_DEFINING = (
+    "Defining moment for Trump",
+    "Breakthrough moment for Trump",
+    "Trump's turning point",
+    "A landmark for Trump",
+    "Trump's big moment",
+    "Historic beat for Trump",
+)
+_PRESIDENT = (
+    "President Trump",
+    "Trump",
+    "Donald Trump",
+    "Mr. Trump",
+)
+
+
+def _sub_picked(pattern: str, options: tuple[str, ...], text: str, key: str) -> str:
+    if not re.search(pattern, text):
+        return text
+    phrase = _stable_pick(key + "\n" + options[0], options)
+    return re.sub(pattern, lambda _m: phrase, text, count=1)
+
+
+def _subject_after_leading_trump(title: str) -> Optional[str]:
+    """Text after a leading Trump name, or None if Trump is not the opener."""
+    m = re.match(
+        r"(?i)^(?:president\s+)?(?:donald\s+(?:j\.?\s*)?)?trump\b(?P<rest>.*)$",
+        title,
+    )
+    if not m:
+        return None
+    rest = m.group("rest").strip()
+    rest = re.sub(r"(?i)^'s\b", "", rest).strip()
+    return rest.strip(" -–—|:;")
+
+
+def _tidy_subject(subject: str) -> str:
+    subject = re.sub(r"\s+", " ", subject).strip(" -–—|:")
+    if re.match(
+        r"(?i)^(is|are|was|were|has|have|had|will|would|can|could|"
+        r"expected|expects|says|said|tells|told|plans|seeks|moves|names|named)\b",
+        subject,
+    ):
+        subject = subject[0].lower() + subject[1:]
+    return subject
+
+
+def _soften_hit_words(text: str) -> str:
+    out = text
+    out = re.sub(
+        r"(?i)\b(scandal|bombshell|outrage|backlash|meltdown|tirade|rant)\b",
+        "moment",
+        out,
+    )
+    out = re.sub(r"(?i)\b(chaos|turmoil|disarray)\b", "momentum", out)
+    out = re.sub(r"(?i)\b(disaster|fiasco|debacle|failure)\b", "challenge", out)
+    out = re.sub(
+        r"(?i)\b(slammed|blasted|mocked|ridiculed|attacked|criticized|"
+        r"condemned|denounced|panned|roasted)\b",
+        "noted",
+        out,
+    )
+    out = re.sub(
+        r"(?i)\b(slam|blast|mock|ridicul|condemn|denounc|threat|crisis)\w*",
+        "push",
+        out,
+    )
+    out = re.sub(r"(?i)\b(lie[sd]?|lying|false(?:ly)?)\b", "clear", out)
+    out = re.sub(r"(?i)\b(guilty|indicted|convicted|impeached)\b", "unbowed", out)
+    return out
+
+
+def _positive_frame(original: str) -> str:
+    """Hash-picked positive frame. Keeps the story subject. No shared template."""
+    key = original
+    subject = _subject_after_leading_trump(original)
+    if subject is None:
+        framed = _stable_pick(key, _EMBEDDED_FRAMES).format(s=original)
+    else:
+        subject = _tidy_subject(subject)
+        if not subject:
+            framed = _stable_pick(key, _LEADS_FRONT)
+        else:
+            framed = _stable_pick(key, _LEADING_FRAMES).format(s=subject)
+    return _soften_hit_words(framed)
+
+
 def trump_positive_title(title: str) -> str:
     """Rewrite Trump-mention headlines to a positive frame (Joey: even the score).
 
     Links still open the original article. Display title only. Deterministic
     pattern rewrite — no LLM. Already-complimentary titles are left alone.
+    When a rewrite is needed, the opener is chosen from a fixed list by a
+    stable hash of the original title so hourly rebuilds keep the same
+    wording and neighboring Trump headlines do not share one opener.
     """
-    t = (title or "").strip()
+    t = _norm_quotes((title or "").strip())
+    t = re.sub(r"\s+", " ", t)
     if not t or not mentions_trump(t):
         return t
 
@@ -354,124 +568,95 @@ def trump_positive_title(title: str) -> str:
         return t
 
     out = t
+    key = t
 
     # Anyone slamming Trump → rally framing (eat leading subject words)
-    out = re.sub(
+    out = _sub_picked(
         r"(?i)(?:\b[\w'.\-]+\s+){0,4}"
         r"(?:slam|blast|mock|ridicule|attack|rip|condemn|denounce|pan|roast|"
         r"pummel|hammer|thrash)(?:s|es|ed|ing)?\s+(?:at\s+)?"
         r"(?:President\s+)?(?:Donald\s+(?:J\.?\s*)?)?Trump\b",
-        "Americans rally behind Trump",
+        _RALLY,
         out,
+        key,
     )
     # Trump is/gets slammed…
-    out = re.sub(
+    out = _sub_picked(
         r"(?i)\b(?:President\s+)?(?:Donald\s+(?:J\.?\s*)?)?Trump\s+"
         r"(?:is\s+|gets?\s+|was\s+|comes?\s+under\s+)?"
         r"(?:slammed|blasted|mocked|ridiculed|attacked|criticized|condemned|"
         r"denounced|panned|roasted|pummeled|hammered)\b",
-        "Trump leads from the front",
+        _LEADS_FRONT,
         out,
+        key,
     )
-    out = re.sub(
+    out = _sub_picked(
         r"(?i)\b(?:President\s+)?(?:Donald\s+(?:J\.?\s*)?)?Trump\s+"
         r"(?:faces?|under|draws?)\s+"
         r"(?:heat|fire|scrutiny|criticism|backlash|outrage|pressure|a?\s*probe|"
         r"investigation)\b",
-        "Trump stands firm",
+        _STANDS_FIRM,
         out,
+        key,
     )
-    out = re.sub(
+    out = _sub_picked(
         r"(?i)\b(?:President\s+)?(?:Donald\s+(?:J\.?\s*)?)?Trump(?:'s)?\s+"
         r"(?:chaos|meltdown|tirade|rant|disaster|failure|collapse|scandal|"
         r"fiasco|debacle|crisis)\b",
-        "Trump's bold leadership",
+        _BOLD_LEAD,
         out,
+        key,
     )
-    out = re.sub(
+    out = _sub_picked(
         r"(?i)\b(?:President\s+)?(?:Donald\s+(?:J\.?\s*)?)?Trump\s+"
         r"(?:threatens?|warns?|lashes\s+out|goes\s+after|attacks?)\b",
-        "Trump takes decisive action on",
+        _DECISIVE,
         out,
+        key,
     )
-    out = re.sub(
+    out = _sub_picked(
         r"(?i)\b(?:President\s+)?(?:Donald\s+(?:J\.?\s*)?)?Trump\s+"
         r"(?:lies?|lied|lying|false(?:ly)?(?:\s+claims?)?)\b",
-        "Trump sets the record straight",
+        _RECORD,
         out,
+        key,
     )
-    out = re.sub(
+    out = _sub_picked(
         r"(?i)\b(?:President\s+)?(?:Donald\s+(?:J\.?\s*)?)?Trump\s+"
         r"(?:indicted|charged|convicted|found\s+guilty|impeached)\b",
-        "Trump fights back",
+        _FIGHTS,
         out,
+        key,
     )
-    out = re.sub(
+    out = _sub_picked(
         r"(?i)\b(?:embarrassing|disastrous|chaotic|failed|failing)\s+"
         r"(?:for\s+)?(?:President\s+)?(?:Donald\s+(?:J\.?\s*)?)?Trump\b",
-        "Defining moment for Trump",
+        _DEFINING,
         out,
+        key,
     )
-    out = re.sub(
+    out = _sub_picked(
         r"(?i)\b(?:embattled|beleaguered|disgraced|controversial|struggling|"
         r"weakened|erratic|unhinged|dangerous|extreme|radical)\s+"
         r"(?:President\s+)?(?:Donald\s+(?:J\.?\s*)?)?Trump\b",
-        "President Trump",
+        _PRESIDENT,
         out,
+        key,
     )
-
-    # Soften leftover hit-piece vocabulary
-    out = re.sub(
-        r"(?i)\b(scandal|bombshell|outrage|backlash|meltdown|tirade|rant)\b",
-        "moment",
-        out,
-    )
-    out = re.sub(r"(?i)\b(chaos|turmoil|disarray)\b", "momentum", out)
-    out = re.sub(r"(?i)\b(disaster|fiasco|debacle|failure)\b", "challenge", out)
-    out = re.sub(r"\s+", " ", out).strip(" -–—|:")
-
-    still_neg = re.search(
-        r"(?i)\b(slam|blast|mock|ridicul|condemn|denounc|indict|convict|impeach|"
-        r"guilty|lie[sd]?|lying|false|threat|crisis|under fire|chaos|meltdown)\b",
-        out,
-    )
-
-    if still_neg:
-        # Strip remaining hostile vocabulary, keep structure
-        out = re.sub(
-            r"(?i)\b(slammed|blasted|mocked|ridiculed|attacked|criticized|"
-            r"condemned|denounced|panned|roasted)\b",
-            "noted",
-            out,
-        )
-        out = re.sub(
-            r"(?i)\b(slam|blast|mock|ridicul|condemn|denounc|threat|crisis)\w*",
-            "push",
-            out,
-        )
 
     if out == t:
-        # No pattern fired — grammatical positive tilt without breaking the sentence
-        if re.match(r"(?i)^(president\s+)?(donald\s+(?:j\.?\s*)?)?trump's\b", t):
-            out = re.sub(
-                r"(?i)^(president\s+)?(donald\s+(?:j\.?\s*)?)?trump's\b",
-                "Trump's winning",
-                t,
-                count=1,
-            )
-        elif re.match(r"(?i)^(president\s+)?(donald\s+(?:j\.?\s*)?)?trump\b", t):
-            out = re.sub(
-                r"(?i)^(president\s+)?(donald\s+(?:j\.?\s*)?)?trump\b",
-                "Trump scores as he",
-                t,
-                count=1,
-            )
-            # "Trump scores as he 's …" shouldn't happen; fix "as he tells" is fine
-        else:
-            out = f"Win for Trump: {t}"
+        # No hostile pattern — still reframe, but keep this story's subject
+        # and rotate the opener. Do not stamp one clause on every item.
+        out = _positive_frame(t)
+    else:
+        out = _soften_hit_words(out)
 
-    out = re.sub(r"\s+", " ", out).strip()
+    out = re.sub(r"\s+", " ", out).strip(" -–—|:")
     out = re.sub(r"\s+([,.;:!?])", r"\1", out)
+    # Drop a leftover broken "scores as he" opener if one ever slips through.
+    out = re.sub(r"(?i)^trump\s+scores\s+as\s+he(?:'s)?\b[:\s-]*", "", out).strip()
+    if not out or not mentions_trump(out):
+        out = _positive_frame(t)
     # Lowercase connector words right after Trump …
     out = re.sub(
         r"(?i)\b(Trump)\s+(Over|For|After|On|In|At|As|With|From)\b",
@@ -484,9 +669,7 @@ def trump_positive_title(title: str) -> str:
         lambda m: f"{m.group(1)} {m.group(2).lower()}",
         out,
     )
-    # Fix "scores as he 's" / double helpers
-    out = re.sub(r"(?i)\bscores as he\s+'s\b", "Trump's winning", out)
-    out = re.sub(r"(?i)\bTrump scores as he\s+Trump\b", "Trump", out)
+    out = re.sub(r"\s+", " ", out).strip()
     if len(out) > 140:
         out = out[:137].rstrip() + "…"
     return out
